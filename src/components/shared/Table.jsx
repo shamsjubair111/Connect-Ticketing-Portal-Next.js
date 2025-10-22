@@ -4,213 +4,9 @@ import { useState } from "react";
 import { ChevronDown, MoreHorizontal, Eye } from "lucide-react";
 import { useRouter } from "next/navigation";
 
-const Table = () => {
+const Table = ({ data, loading }) => {
   const [selectedRows, setSelectedRows] = useState(new Set());
   const router = useRouter();
-
-  const data = [
-    {
-      id: 1,
-      requester: {
-        name: "Md. Jaidul Islam",
-        email: "rimonkhan2872@gmail.com",
-        avatar: "MI",
-        color: "bg-purple-500",
-      },
-      subject:
-        "OTP সম্পর্কিত সমস্যা | OTP কোডেই আসেনি | আমাদের বিক্রয় থেকে আপনার বাবুর্চি করছেন না | MNP করা নাই",
-      agent: "unassigned",
-      status: "Open",
-      lastMessage: "less than a minute ago",
-    },
-    {
-      id: 2,
-      requester: {
-        name: "Miraj",
-        email: "mirajhosinmd4@gamil.com",
-        avatar: "M",
-        color: "bg-green-500",
-      },
-      subject:
-        "OTP সম্পর্কিত সমস্যা | OTP কোডেই আসেনি | আমাদের বিক্রয় থেকে আপনার বাবুর্চি করছেন না | MNP করা আছে",
-      agent: "unassigned",
-      status: "Open",
-      lastMessage: "less than a minute ago",
-    },
-    {
-      id: 3,
-      requester: {
-        name: "রায় বানা বিদ্যা বিজয়ন",
-        email: "ranamilon188@gmail.com",
-        avatar: "রা",
-        color: "bg-red-500",
-      },
-      subject: "NID এর ছবি নিতে পারছি না।",
-      agent: "unassigned",
-      status: "Open",
-      lastMessage: "less than a minute ago",
-    },
-    {
-      id: 4,
-      requester: {
-        name: "MD Hamidur rahman",
-        email: "mdhamidurrahman886@...",
-        avatar: "MR",
-        color: "bg-purple-500",
-      },
-      subject:
-        "রেজিস্ট্রেশন সম্পর্কিত সমস্যাগুলির NID পূর্ণ বিক্রয় হাইলাইট,পূর্বাভাস NID সম্পর্কিত করছে,পূর্বাভাস সাইট NID সম্পর্কিত নাম এর ৮ টা পার হয়েছে",
-      agent: "CS-6 : IU",
-      status: "Solved",
-      lastMessage: "2 minutes ago",
-    },
-    {
-      id: 5,
-      requester: {
-        name: "Phosil Hossen",
-        email: "hossenphosil@gmail.com",
-        avatar: "PH",
-        color: "bg-purple-500",
-      },
-      subject: "NID এর ছবি নিতে পারছি না।",
-      agent: "CS-18:KA",
-      status: "Solved",
-      lastMessage: "2 minutes ago",
-    },
-    {
-      id: 6,
-      requester: {
-        name: "BRILLIANT CONNECT...",
-        email: "sabujmahmudd37@gmail...",
-        avatar: "BW",
-        color: "bg-purple-500",
-      },
-      subject: "sabuj Mahmud",
-      agent: "CS-6 : IU",
-      status: "Solved",
-      lastMessage: "2 minutes ago",
-      hasEye: true,
-    },
-    {
-      id: 7,
-      requester: {
-        name: "BRILLIANT CONNECT...",
-        email: "mmojibur895@gmail.com",
-        avatar: "BW",
-        color: "bg-purple-500",
-      },
-      subject: "md mojibur",
-      agent: "CS-6 : IU",
-      status: "Solved",
-      lastMessage: "3 minutes ago",
-    },
-    {
-      id: 8,
-      requester: {
-        name: "karim Karim",
-        email: "mk0911920@gmail.com",
-        avatar: "KK",
-        color: "bg-purple-500",
-      },
-      subject: "NID এর ছবি নিতে পারছি না।",
-      agent: "CS-18:KA",
-      status: "Solved",
-      lastMessage: "3 minutes ago",
-    },
-    {
-      id: 9,
-      requester: {
-        name: "Nieme",
-        email: "niemehmed5@gmail.com",
-        avatar: "N",
-        color: "bg-purple-500",
-      },
-      subject:
-        "OTP সম্পর্কিত সমস্যা | ২৪ ঘন্টা অপেক্ষা করতে বলা হয়েছে। ২৪ ঘন্টা পর ওটিপি পাবেন। অনুগ্রহ করে আমার OTP সিস্টেম করে দিন।",
-      agent: "unassigned",
-      status: "Open",
-      lastMessage: "5 minutes ago",
-    },
-    {
-      id: 10,
-      requester: {
-        name: "MD Rabby Abraham",
-        email: "rabbyabraham63@gmail...",
-        avatar: "MA",
-        color: "bg-green-500",
-      },
-      subject:
-        "OTP সম্পর্কিত সমস্যা | OTP কোডেই আসেনি | আমাদের বিক্রয় থেকে আপনার বাবুর্চি করছেন না | MNP করা আছে",
-      agent: "unassigned",
-      status: "Open",
-      lastMessage: "5 minutes ago",
-    },
-    {
-      id: 11,
-      requester: {
-        name: "Md Jahid",
-        email: "asrafur2@gmail.com",
-        avatar: "MJ",
-        color: "bg-green-500",
-      },
-      subject: "আমার সমস্যাই এখানে বিস্তারিত লিখুন : আমার টাকা বিডিত স্থানে না",
-      agent: "unassigned",
-      status: "Open",
-      lastMessage: "5 minutes ago",
-    },
-    {
-      id: 12,
-      requester: {
-        name: "Md Jahid",
-        email: "asrafur2@gmail.com",
-        avatar: "MJ",
-        color: "bg-green-500",
-      },
-      subject: "আমার সমস্যাই এখানে বিস্তারিত লিখুন : আমার টাকা বিডিত স্থানে না",
-      agent: "unassigned",
-      status: "Open",
-      lastMessage: "5 minutes ago",
-    },
-    {
-      id: 13,
-      requester: {
-        name: "Md Jahid",
-        email: "asrafur2@gmail.com",
-        avatar: "MJ",
-        color: "bg-green-500",
-      },
-      subject: "আমার সমস্যাই এখানে বিস্তারিত লিখুন : আমার টাকা বিডিত স্থানে না",
-      agent: "unassigned",
-      status: "Open",
-      lastMessage: "5 minutes ago",
-    },
-    {
-      id: 14,
-      requester: {
-        name: "Md Jahid",
-        email: "asrafur2@gmail.com",
-        avatar: "MJ",
-        color: "bg-green-500",
-      },
-      subject: "আমার সমস্যাই এখানে বিস্তারিত লিখুন : আমার টাকা বিডিত স্থানে না",
-      agent: "unassigned",
-      status: "Open",
-      lastMessage: "5 minutes ago",
-    },
-    {
-      id: 15,
-      requester: {
-        name: "Md Jahid",
-        email: "asrafur2@gmail.com",
-        avatar: "MJ",
-        color: "bg-green-500",
-      },
-      subject: "আমার সমস্যাই এখানে বিস্তারিত লিখুন : আমার টাকা বিডিত স্থানে না",
-      agent: "unassigned",
-      status: "Open",
-      lastMessage: "5 minutes ago",
-    },
-  ];
 
   const toggleRow = (id) => {
     const newSelected = new Set(selectedRows);
@@ -226,12 +22,40 @@ const Table = () => {
     if (selectedRows.size === data.length) {
       setSelectedRows(new Set());
     } else {
-      setSelectedRows(new Set(data.map((item) => item.id)));
+      setSelectedRows(new Set(data.map((item) => item?.ticket_id)));
     }
   };
 
   const getStatusColor = (status) => {
-    return status === "Open" ? "text-blue-500" : "text-green-500";
+    return status === "open"
+      ? "text-blue-700"
+      : status === "in_progress"
+      ? "text-green-700"
+      : "text-red-700";
+  };
+
+  const getLatestCommentTime = (comments) => {
+    if (!comments || comments.length === 0) return "No comments yet";
+
+    const latest = [...comments].sort(
+      (a, b) => new Date(b.created_at) - new Date(a.created_at)
+    )[0];
+
+    const latestDate = new Date(latest.created_at);
+    const now = new Date();
+    const diffMs = now - latestDate;
+    const diffMinutes = Math.floor(diffMs / 60000);
+
+    if (diffMinutes < 1) return "Just now";
+    if (diffMinutes < 60)
+      return `${diffMinutes} minute${diffMinutes > 1 ? "s" : ""} ago`;
+
+    const diffHours = Math.floor(diffMinutes / 60);
+    if (diffHours < 24)
+      return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
+
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
   };
 
   return (
@@ -268,61 +92,67 @@ const Table = () => {
         <tbody>
           {data.map((row) => (
             <tr
-              key={row.id}
-              onClick={() => router.push(`/tickets/${row.id}`)}
+              key={row?.ticket_id}
+              onClick={() => router.push(`/tickets/${row.ticket_id}`)}
               className="border-b border-gray-200 cursor-pointer transition-all duration-200 ease-in-out hover:bg-blue-50 hover:scale-[1.01]"
             >
               <td className="px-4 py-3">
                 <input
                   type="checkbox"
-                  checked={selectedRows.has(row.id)}
+                  checked={selectedRows.has(row?.ticket_id)}
                   onClick={(e) => e.stopPropagation()}
-                  onChange={() => toggleRow(row.id)}
+                  onChange={() => toggleRow(row?.ticket_id)}
                   className="rounded"
                 />
               </td>
               <td className="px-4 py-3">
                 <div className="flex items-center gap-3">
                   <div
-                    className={`w-10 h-10 rounded-full ${row.requester.color} flex items-center justify-center text-white text-sm font-semibold`}
+                    className={`w-10 h-10 rounded-full bg-blue-700 flex items-center justify-center text-white text-sm font-semibold`}
                   >
-                    {row.requester.avatar}
+                    MI
                   </div>
                   <div>
                     <div className="text-sm font-medium text-gray-900">
-                      {row.requester.name}
+                      Md. Jaidul Islam
                     </div>
                     <div className="text-xs text-gray-500">
-                      {row.requester.email}
+                      rimonkhan2872@gmail.com
                     </div>
                   </div>
                 </div>
               </td>
               <td className="px-4 py-3">
                 <div className="flex items-start gap-2">
-                  <span className="text-gray-400 mt-1">•</span>
+                  {/* <span className="text-gray-400 mt-1">•</span> */}
                   <span className="text-sm text-gray-700 line-clamp-2">
-                    {row.subject}
+                    {row?.title}
                   </span>
                 </div>
               </td>
               <td className="px-4 py-3">
-                <span className="text-sm text-gray-700">{row.agent}</span>
+                <span className="text-sm text-gray-700">Unassigned</span>
               </td>
               <td className="px-4 py-3">
                 <span
                   className={`text-sm font-medium ${getStatusColor(
-                    row.status
+                    row?.ticket_status
                   )}`}
                 >
-                  {row.status}
+                  {row?.ticket_status === "open"
+                    ? "Open"
+                    : row?.ticket_status === "in_progress"
+                    ? "In\u00A0Progress"
+                    : row?.ticket_status === "closed"
+                    ? "Solved"
+                    : null}
                 </span>
               </td>
               <td className="px-4 py-3">
                 <div className="flex items-center gap-2">
                   {row.hasEye && <Eye className="w-4 h-4 text-gray-400" />}
                   <span className="text-sm text-gray-600">
-                    {row.lastMessage}
+                    {getLatestCommentTime(row?.comments)}
                   </span>
                 </div>
               </td>

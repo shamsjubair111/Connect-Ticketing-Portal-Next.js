@@ -1,3 +1,4 @@
+"use client";
 export const API_BASE_URL =
   window.location.hostname === "app-support.brilliant.com.bd"
     ? "https://app-support.brilliant.com.bd"

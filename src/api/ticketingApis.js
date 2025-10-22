@@ -1,6 +1,10 @@
-import axios from "axios";
-import execute from "./tixket";
+import execute from "./ticket";
 import { API_BASE_URL } from "../config";
+
+//validation
+export function validate() {
+  return axios.get(`${API_BASE_URL}/api/v1/users/validate-token`);
+}
 
 
 export function getTicketsByPage(pageNo, selectedTab, selectedGroupId, ticketIdForMyTicket, issueForMyTicket, selectedSubGroupId, statusForMyTicket, pNumberForMyTicket,startDate,endDate) {
