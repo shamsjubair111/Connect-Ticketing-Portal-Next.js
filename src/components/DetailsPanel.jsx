@@ -1,29 +1,320 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Copy, MoreVertical, Info } from "lucide-react";
+import { forwardTicket, resolveTicket } from "@/api/ticketingApis";
+import { useContext } from "react";
+import { alertContext } from "@/hooks/alertContext";
+import { jwtDecode } from "jwt-decode";
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import MyModal from "../common/MyModal"; // ✅ Make sure this path is correct
+// import { forwardTicket, resolveTicket } from "@/api/ticketingApis"; // ✅ Uncomment if API exists
 
-export default function DetailsPanel() {
+export default function DetailsPanel({
+  ticket,
+  onOpenCustomFieldModal,
+  onTicketUpdated,
+}) {
   const [status, setStatus] = useState("Open");
   const [priority, setPriority] = useState("Medium");
+  const { setAlertCtx } = useContext(alertContext);
+  const [showMenu, setShowMenu] = useState(false);
+  const [action, setAction] = useState("");
+  const [resolveToggle, setResolveToggle] = useState(false);
+  const [forwardToggle, setForwardToggle] = useState(false);
+  const [buttonLoader, setButtonLoader] = useState(false);
+  const [refresh, setRefresh] = useState(0);
+  const [loop, setLoop] = useState(false);
+  const [cause, setCause] = useState("");
+  const [selectedDept, setSelectDept] = useState("");
+
+  const allUsers = [
+    { key: "iptsp", value: "IPTSP" },
+    { key: "rs", value: "Retail Sales" },
+    { key: "cc", value: "Customer Care" },
+    { key: "oss-bss", value: "OSS & BSS" },
+  ];
+
+  const userType = jwtDecode(localStorage.getItem("jwt_token")).user_type;
+
+  const dropdownRef = useRef(null);
+
+  // ✅ Close dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowMenu(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // ✅ Forward handler
+  const handleForward = async () => {
+    try {
+      setButtonLoader(true);
+      const data = {
+        ticket_id: ticket.ticket_id,
+        previously_issued_to: ticket.issued_to,
+        newly_issued_to: action === "r&f" ? "cc" : selectedDept,
+        forward_cause: cause,
+        is_in_forward_loop: loop,
+      };
+
+      const res = await forwardTicket(data);
+
+      if (action === "r&f") {
+        await handleResolve(); // chain resolve after forward
+      }
+
+      setButtonLoader(false);
+      setForwardToggle(false);
+      setAlertCtx({
+        title: "Success!",
+        message:
+          action === "r&f"
+            ? "Ticket successfully forwarded and resolved"
+            : "Ticket successfully forwarded",
+        type: "success",
+      });
+    } catch (err) {
+      console.error(err);
+      setButtonLoader(false);
+      setAlertCtx({
+        message:
+          err.response?.data?.message ||
+          "Something went wrong. Please try again or refresh.",
+        type: "error",
+      });
+    } finally {
+      setForwardToggle(false);
+    }
+  };
+
+  const handleResolve = async () => {
+    try {
+      setButtonLoader(true);
+      const data = { ticket_id: ticket.ticket_id };
+      await resolveTicket(data);
+
+      setButtonLoader(false);
+      setResolveToggle(false);
+      setAlertCtx({
+        title: "Success!",
+        message: "Successfully resolved this ticket",
+        type: "success",
+      });
+      // ✅ Update parent UI immediately without refresh
+      onTicketUpdated?.();
+    } catch (err) {
+      console.error(err);
+      setButtonLoader(false);
+      setAlertCtx({
+        message:
+          err.response?.data?.message ||
+          "Something went wrong. Please try again or refresh.",
+        type: "error",
+      });
+    } finally {
+      setResolveToggle(false);
+    }
+  };
 
   return (
     <div className="w-full lg:w-96 bg-white p-6 shadow-none">
-      {/* Header */}
+      {/* ===== HEADER ===== */}
       <div className="mb-6 flex items-center justify-between">
         <h2 className="text-lg font-bold text-gray-900">Details</h2>
-        <button className="text-gray-500 hover:text-gray-700">
-          <MoreVertical size={20} />
-        </button>
+
+        {/* ===== DROPDOWN ===== */}
+        <div ref={dropdownRef} className="relative">
+          <button
+            className="text-gray-500 hover:text-gray-700 cursor-pointer"
+            onClick={() => setShowMenu(!showMenu)}
+          >
+            <MoreVertical size={20} />
+          </button>
+
+          {showMenu && (
+            <>
+              {ticket?.is_resolved === "True" ? (
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-50">
+                  <ul className="py-2 flex justify-center">
+                    <li>
+                      <div className="px-3 py-1 bg-green-100 text-green-800 text-sm font-semibold rounded-md">
+                        ✅ Solved
+                      </div>
+                    </li>
+                  </ul>
+                </div>
+              ) : (
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-50">
+                  <ul className="py-1 text-sm text-gray-700">
+                    <li
+                      onClick={() => {
+                        setForwardToggle(true);
+                        setAction("forward");
+                        setShowMenu(false);
+                      }}
+                      className="cursor-pointer hover:bg-gray-100 px-4 py-2"
+                    >
+                      Forward
+                    </li>
+
+                    <li
+                      onClick={() => {
+                        setForwardToggle(true);
+                        setAction("r&f");
+                        setShowMenu(false);
+                      }}
+                      className="cursor-pointer hover:bg-gray-100 px-4 py-2"
+                    >
+                      Resolve & Forward to CC
+                    </li>
+
+                    <li
+                      onClick={() => {
+                        setResolveToggle(true);
+                        setAction("resolve");
+                        setShowMenu(false);
+                      }}
+                      className="cursor-pointer hover:bg-gray-100 px-4 py-2"
+                    >
+                      Resolve
+                    </li>
+                  </ul>
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </div>
 
-      {/* Accordion Sections */}
+      {/* ===== MODALS ===== */}
+      {forwardToggle && (
+        <MyModal
+          toggle={forwardToggle}
+          title={
+            action === "r&f" ? "Resolve & Forward to CC" : "Forward Ticket"
+          }
+          disabled={action === "forward" ? !cause || !selectedDept : !cause}
+          loader={buttonLoader}
+          body={
+            <div>
+              <div>
+                {action === "forward" && (
+                  <>
+                    <div className="mb-2 block">
+                      <label
+                        htmlFor="dept"
+                        className="text-sm font-medium text-gray-700"
+                      >
+                        Forward to
+                      </label>
+                    </div>
+                    <select
+                      id="dept"
+                      required
+                      onChange={(e) => setSelectDept(e.target.value)}
+                      value={selectedDept}
+                      className="w-full border border-gray-300 rounded-md p-2 text-sm"
+                    >
+                      <option value={""}>{""}</option>
+                      {allUsers.map((item, i) => (
+                        <>
+                          {item.key !== userType && (
+                            <option key={i} value={item.key}>
+                              {item.value}
+                            </option>
+                          )}
+                          {userType === "cc" &&
+                            item.key === "cc" &&
+                            ticket.issued_to !== "cc" && (
+                              <option key={i} value={item.key}>
+                                {item.value}
+                              </option>
+                            )}
+                        </>
+                      ))}
+                    </select>
+                  </>
+                )}
+
+                {action === "r&f" && (
+                  <>
+                    <label
+                      htmlFor="dept"
+                      className="text-sm font-medium text-gray-700"
+                    >
+                      Forward to
+                    </label>
+                    <input
+                      type="text"
+                      id="dept"
+                      value={"Corporate Support"}
+                      disabled
+                      className="w-full border border-gray-300 rounded-md p-2 text-sm bg-gray-50"
+                    />
+                  </>
+                )}
+              </div>
+
+              <label
+                htmlFor="cause"
+                className="block mt-3 text-sm font-medium text-gray-700"
+              >
+                Cause
+              </label>
+              <input
+                type="text"
+                id="cause"
+                value={cause}
+                onChange={(e) => setCause(e.target.value)}
+                className="w-full border border-gray-300 rounded-md p-2 text-sm"
+                placeholder="Enter cause"
+                required
+              />
+
+              <label className="relative inline-flex items-center cursor-pointer mt-4">
+                <input
+                  type="checkbox"
+                  className="sr-only peer"
+                  value={loop}
+                  onChange={() => setLoop(!loop)}
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                <span className="ml-3 text-sm font-medium text-gray-900">
+                  {loop ? "Stay in loop" : "Stay out of loop"}
+                </span>
+              </label>
+            </div>
+          }
+          closeMethod={() => setForwardToggle(false)}
+          submitMethod={handleForward}
+        />
+      )}
+
+      {resolveToggle && (
+        <MyModal
+          toggle={resolveToggle}
+          title="Resolve Ticket"
+          closeMethod={() => setResolveToggle(false)}
+          submitMethod={handleResolve}
+          body={
+            <p className="text-sm text-gray-700">
+              Are you sure you want to resolve this ticket?
+            </p>
+          }
+        />
+      )}
+
+      {/* ===== ACCORDIONS ===== */}
       <Accordion type="single" collapsible className="space-y-4">
         {/* Ticket Info */}
         <AccordionItem value="ticket-info">
@@ -31,57 +322,87 @@ export default function DetailsPanel() {
             Ticket info
           </AccordionTrigger>
           <AccordionContent className="space-y-4 pb-4 pt-2">
-            <div>
-              <label className="text-sm text-gray-600">Ticket ID:</label>
-              <div className="mt-1 flex items-center gap-2">
-                <span className="font-mono text-sm text-gray-900">ETK714</span>
-                <button className="text-gray-400 hover:text-gray-600">
-                  <Copy size={16} />
-                </button>
-              </div>
+            <div className="flex items-center gap-2 text-sm text-gray-900">
+              <span className="text-gray-600">
+                Ticket ID: {ticket?.ticket_id}
+              </span>
+              <button className="text-gray-400 hover:text-gray-600">
+                <Copy size={16} />
+              </button>
             </div>
 
             <div>
-              <label className="text-sm text-gray-600">Created:</label>
-              <p className="mt-1 text-sm text-gray-900">20 Oct 2025</p>
+              <p className="text-sm text-gray-900">
+                <span className="text-gray-600">Created:</span>{" "}
+                {ticket?.created_at
+                  ? new Date(ticket.created_at).toLocaleDateString("en-GB", {
+                      day: "2-digit",
+                      month: "short",
+                      year: "numeric",
+                    })
+                  : "N/A"}
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-1 text-sm text-gray-900">
+              <span className="text-gray-600">Last message:</span>
+              {ticket?.comments?.length > 0 ? (
+                <>
+                  <span>
+                    {ticket.comments[ticket.comments.length - 1].message}
+                  </span>
+                  <span className="text-gray-500 text-xs">
+                    by{" "}
+                    {ticket.comments[ticket.comments.length - 1].commenter_name}{" "}
+                    on{" "}
+                    {new Date(
+                      ticket.comments[ticket.comments.length - 1].created_at
+                    ).toLocaleDateString("en-GB", {
+                      day: "2-digit",
+                      month: "short",
+                      year: "numeric",
+                    })}
+                  </span>
+                </>
+              ) : (
+                <span className="text-gray-500">No comments yet</span>
+              )}
             </div>
 
             <div>
-              <label className="text-sm text-gray-600">Last message:</label>
-              <p className="mt-1 text-sm text-gray-900">20 Oct 2025</p>
-            </div>
-
-            <div>
-              <label className="text-sm text-gray-600">Status:</label>
+              <label className="text-sm text-gray-600">Status: </label>
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value)}
                 className="mt-1 rounded border border-gray-300 bg-white px-2 py-1 text-sm text-gray-900"
               >
                 <option>Open</option>
-                <option>Closed</option>
                 <option>Pending</option>
+                <option>On Hold</option>
+                <option>Closed</option>
+                <option>Solved</option>
               </select>
             </div>
 
-            <div>
-              <label className="text-sm text-gray-600">Rating:</label>
-              <p className="mt-1 flex items-center gap-1 text-sm text-gray-900">
+            <div className="flex items-center gap-2 text-sm text-gray-900">
+              <span className="text-gray-600">Rating:</span>
+              <span className="flex items-center gap-1">
                 Not rated
                 <Info size={16} className="text-gray-400" />
-              </p>
+              </span>
             </div>
 
             <div>
-              <label className="text-sm text-gray-600">Priority:</label>
+              <label className="text-sm text-gray-600">Priority: </label>
               <select
                 value={priority}
                 onChange={(e) => setPriority(e.target.value)}
                 className="mt-1 rounded border border-gray-300 bg-white px-2 py-1 text-sm text-gray-900"
               >
-                <option>Low</option>
-                <option>Medium</option>
+                <option>Urgent</option>
                 <option>High</option>
+                <option>Medium</option>
+                <option>Low</option>
               </select>
             </div>
 
@@ -125,7 +446,10 @@ export default function DetailsPanel() {
               Create your first custom field to add more useful details to your
               tickets.
             </p>
-            <button className="mt-3 text-sm font-semibold text-blue-600 hover:text-blue-700">
+            <button
+              onClick={onOpenCustomFieldModal}
+              className="mt-3 text-sm font-semibold text-blue-600 hover:text-blue-700 cursor-pointer"
+            >
               Create custom field
             </button>
           </AccordionContent>
@@ -136,27 +460,136 @@ export default function DetailsPanel() {
           <AccordionTrigger className="py-3 text-base font-semibold text-gray-900 hover:no-underline">
             Responsibility
           </AccordionTrigger>
-          <AccordionContent className="pb-4 pt-2">
-            <div className="space-y-3">
-              <p className="text-sm font-semibold text-gray-900">Team</p>
-              <div className="flex items-center justify-between rounded bg-gray-50 p-3">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded bg-orange-500 text-sm font-bold text-white">
-                    NI
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-gray-900">
-                      NID Photo upload issue
-                    </p>
-                    <p className="text-xs text-gray-600">
-                      1481504077@tickets.helpdesk.com
-                    </p>
-                  </div>
-                </div>
-                <button className="text-sm text-blue-600 hover:text-blue-700">
+          <AccordionContent className="pb-4 pt-2 space-y-4">
+            <div>
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold text-gray-900">Team</p>
+                <button className="text-xs text-blue-600 hover:text-blue-700 font-medium cursor-pointer">
                   Change
                 </button>
               </div>
+              <div className="flex items-center gap-3 mt-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded bg-purple-500 text-xs font-bold text-white">
+                  1R
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-900">
+                    101 Restricted
+                  </p>
+                  <p className="text-xs text-gray-600">
+                    1481504077@tickets.helpdesk.com
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold text-gray-900">Agent</p>
+                <div className="flex items-center gap-2 text-xs">
+                  <button className="text-blue-600 hover:text-blue-700 font-medium cursor-pointer">
+                    Assign me
+                  </button>
+                  <button className="text-blue-600 hover:text-blue-700 font-medium cursor-pointer">
+                    Assign
+                  </button>
+                </div>
+              </div>
+              <p className="text-xs text-gray-600 mt-1">
+                No agent assigned to this ticket.
+              </p>
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold text-gray-900">
+                  Followers <span className="text-gray-600">(0)</span>
+                </p>
+                <div className="flex items-center gap-2 text-xs">
+                  <button className="text-blue-600 hover:text-blue-700 font-medium cursor-pointer">
+                    Follow
+                  </button>
+                  <button className="text-blue-600 hover:text-blue-700 font-medium cursor-pointer">
+                    Edit
+                  </button>
+                </div>
+              </div>
+              <p className="text-xs text-gray-600 mt-1">
+                No followers assigned to this ticket.
+              </p>
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+
+        {/* Requester */}
+        <AccordionItem value="requester">
+          <AccordionTrigger className="py-3 text-base font-semibold text-gray-900 hover:no-underline">
+            Requester
+          </AccordionTrigger>
+          <AccordionContent className="pb-4 pt-2">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="h-8 w-8 rounded-full bg-purple-500 text-white flex items-center justify-center font-semibold text-sm">
+                {ticket?.requester?.name?.charAt(0) || "R"}
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-800">
+                  {ticket?.requester?.name || "Unknown"}
+                </p>
+                <p className="text-xs text-gray-500 flex items-center gap-1">
+                  {ticket?.requester?.email || "Not available"}{" "}
+                  <Copy size={12} />
+                </p>
+              </div>
+            </div>
+            <button className="text-sm text-blue-600 hover:underline">
+              + Add more people
+            </button>
+          </AccordionContent>
+        </AccordionItem>
+
+        {/* Requester’s Tickets */}
+        <AccordionItem value="requester-tickets">
+          <AccordionTrigger className="py-3 text-base font-semibold text-gray-900 hover:no-underline">
+            Requester’s tickets
+          </AccordionTrigger>
+          <AccordionContent className="pb-4 pt-2 text-sm text-gray-700">
+            <div className="mb-2 flex items-center justify-between">
+              <strong>Recent tickets</strong>
+              <span className="text-blue-600 text-xs font-medium cursor-pointer">
+                Merge
+              </span>
+            </div>
+            <p className="text-xs text-gray-500">
+              No recent requester’s tickets
+            </p>
+            <div>
+              <strong>Archived tickets</strong>
+              <p className="text-xs text-gray-500">
+                Search{" "}
+                <span className="text-blue-600 cursor-pointer">Archive</span> to
+                view this requester’s archived tickets.
+              </p>
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+
+        {/* Similar Tickets */}
+        <AccordionItem value="similar-tickets">
+          <AccordionTrigger className="py-3 text-base font-semibold text-gray-900 hover:no-underline">
+            Similar tickets
+          </AccordionTrigger>
+          <AccordionContent className="pb-6 pt-4 text-center">
+            <div className="flex flex-col items-center justify-center space-y-3">
+              <div className="h-10 w-10 flex items-center justify-center rounded-full border border-blue-500 text-blue-600">
+                <Info size={20} />
+              </div>
+              <p className="font-semibold text-gray-800">
+                No similar tickets were found
+              </p>
+              <p className="text-sm text-gray-500 max-w-xs">
+                There are no matching tickets available right now. Once you
+                resolve a similar case, it'll appear here.
+              </p>
             </div>
           </AccordionContent>
         </AccordionItem>

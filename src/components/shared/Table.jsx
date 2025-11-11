@@ -4,7 +4,7 @@ import { useState } from "react";
 import { ChevronDown, MoreHorizontal, Eye } from "lucide-react";
 import { useRouter } from "next/navigation";
 
-const Table = ({ data, loading }) => {
+const Table = ({ data, loading, columns }) => {
   const [selectedRows, setSelectedRows] = useState(new Set());
   const router = useRouter();
 
@@ -67,101 +67,63 @@ const Table = ({ data, loading }) => {
               <input
                 type="checkbox"
                 checked={selectedRows.size === data.length && data.length > 0}
-                onChange={toggleAllRows}
+                onChange={() =>
+                  setSelectedRows(
+                    selectedRows.size === data.length
+                      ? new Set()
+                      : new Set(data.map((i) => i.ticket_id))
+                  )
+                }
                 className="rounded"
               />
             </th>
-            <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">
-              REQUESTER
-            </th>
-            <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">
-              SUBJECT
-            </th>
-            <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">
-              AGENT
-            </th>
-            <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">
-              STATUS
-            </th>
-            <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">
-              LAST MESSAGE <ChevronDown className="inline w-4 h-4 ml-1" />
-            </th>
+            {columns.map((col) => (
+              <th
+                key={col.label}
+                className="px-4 py-3 text-left text-sm font-medium text-gray-600"
+              >
+                {col.label}
+                {col.label === "LAST MESSAGE" && (
+                  <ChevronDown className="inline w-4 h-4 ml-1" />
+                )}
+              </th>
+            ))}
             <th className="w-12 px-4 py-3"></th>
           </tr>
         </thead>
         <tbody>
           {data.map((row) => (
             <tr
-              key={row?.ticket_id}
+              key={row.ticket_id}
               onClick={() => router.push(`/tickets/${row.ticket_id}`)}
               className="border-b border-gray-200 cursor-pointer transition-all duration-200 ease-in-out hover:bg-blue-50 hover:scale-[1.01]"
             >
               <td className="px-4 py-3">
                 <input
                   type="checkbox"
-                  checked={selectedRows.has(row?.ticket_id)}
+                  checked={selectedRows.has(row.ticket_id)}
                   onClick={(e) => e.stopPropagation()}
-                  onChange={() => toggleRow(row?.ticket_id)}
+                  onChange={() => {
+                    const newSel = new Set(selectedRows);
+                    newSel.has(row.ticket_id)
+                      ? newSel.delete(row.ticket_id)
+                      : newSel.add(row.ticket_id);
+                    setSelectedRows(newSel);
+                  }}
                   className="rounded"
                 />
               </td>
-              <td className="px-4 py-3">
-                <div className="flex items-center gap-3">
-                  <div
-                    className={`w-10 h-10 rounded-full bg-blue-700 flex items-center justify-center text-white text-sm font-semibold`}
-                  >
-                    MI
-                  </div>
-                  <div>
-                    <div className="text-sm font-medium text-gray-900">
-                      Md. Jaidul Islam
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      rimonkhan2872@gmail.com
-                    </div>
-                  </div>
-                </div>
-              </td>
-              <td className="px-4 py-3">
-                <div className="flex items-start gap-2">
-                  {/* <span className="text-gray-400 mt-1">•</span> */}
-                  <span className="text-sm text-gray-700 line-clamp-2">
-                    {row?.title}
-                  </span>
-                </div>
-              </td>
-              <td className="px-4 py-3">
-                <span className="text-sm text-gray-700">Unassigned</span>
-              </td>
-              <td className="px-4 py-3">
-                <span
-                  className={`text-sm font-medium ${getStatusColor(
-                    row?.ticket_status
-                  )}`}
-                >
-                  {row?.ticket_status === "open"
-                    ? "Open"
-                    : row?.ticket_status === "in_progress"
-                    ? "In\u00A0Progress"
-                    : row?.ticket_status === "closed"
-                    ? "Solved"
-                    : null}
-                </span>
-              </td>
-              <td className="px-4 py-3">
-                <div className="flex items-center gap-2">
-                  {row.hasEye && <Eye className="w-4 h-4 text-gray-400" />}
-                  <span className="text-sm text-gray-600">
-                    {getLatestCommentTime(row?.comments)}
-                  </span>
-                </div>
-              </td>
+
+              {columns.map((col) => (
+                <td key={col.value} className="px-4 py-3">
+                  {col.render ? col.render(row) : row[col.value]}
+                </td>
+              ))}
+
               <td className="px-4 py-3">
                 <button
                   className="p-1 hover:bg-gray-200 rounded"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                  }}
+                  onClick={(e) => e.stopPropagation()}
                 >
                   <MoreHorizontal className="w-5 h-5 text-gray-400" />
                 </button>

@@ -1,12 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Plus, X } from "lucide-react";
+import { getAllGroups, getSubGroups } from "@/api/ticketingApis";
 
 const Filter = ({ onFilterChange }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [selectedFilter, setSelectedFilter] = useState(null);
   const [selectedFilters, setSelectedFilters] = useState([]);
+  const [groups, setGroups] = useState([]);
+  const [subgroups, setSubgroups] = useState([]);
+  const [selectedGroupId, setSelectedGroupId] = useState(null);
 
   const filterOptions = [
     { id: 1, label: "Ticket Id", type: "text" },
@@ -27,41 +30,127 @@ const Filter = ({ onFilterChange }) => {
       id: 5,
       label: "Ticket Type",
       type: "select",
-      options: ["agent", "customer"],
+      options: ["all", "agent", "customer"],
     },
+    { id: 6, label: "Group", type: "select", options: [] },
+    { id: 7, label: "Subgroup", type: "select", options: [] },
+    { id: 8, label: "Start Date", type: "date" },
+    { id: 9, label: "End Date", type: "date" },
   ];
 
+  // ✅ Fetch groups on mount
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await getAllGroups();
+        const list = Array.isArray(res?.data?.data)
+          ? res.data.data
+          : Array.isArray(res?.data)
+          ? res.data
+          : [];
+        setGroups(list);
+      } catch (err) {
+        console.error("Error fetching groups:", err);
+      }
+    })();
+  }, []);
+
+  // ✅ Fetch subgroups when selectedGroupId changes
+  useEffect(() => {
+    if (!selectedGroupId) return;
+
+    let isMounted = true;
+
+    const fetchSubgroups = async () => {
+      try {
+        const res = await getSubGroups(selectedGroupId);
+        const list = Array.isArray(res?.data?.sub_groups)
+          ? res.data.sub_groups
+          : Array.isArray(res?.data?.data)
+          ? res.data.data
+          : Array.isArray(res?.data)
+          ? res.data
+          : [];
+
+        if (isMounted) setSubgroups(list);
+      } catch (err) {
+        console.error("Error fetching subgroups:", err);
+      }
+    };
+
+    fetchSubgroups();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedGroupId]);
+
+  // ✅ Notify parent when filters change
+  useEffect(() => {
+    if (onFilterChange) onFilterChange(selectedFilters);
+  }, [selectedFilters, onFilterChange]);
+
+  // 🧩 Add filter
   const handleSelect = (option) => {
-    // prevent duplicate selection
-    if (!selectedFilters.some((f) => f.id === option.id)) {
-      setSelectedFilters([...selectedFilters, { ...option, value: "" }]);
+    if (option.label === "Subgroup" && !selectedGroupId) {
+      console.warn("Select a group before adding a subgroup filter!");
+      setIsOpen(false);
+      return;
     }
+
+    if (selectedFilters.some((f) => f.id === option.id)) return;
+
+    const newOption = { ...option, value: "" };
+
+    if (option.label === "Group") {
+      newOption.options = (groups || []).map((g) => ({
+        label: g.group_name,
+        value: g._id,
+      }));
+    }
+
+    if (option.label === "Subgroup") {
+      newOption.options = (subgroups || []).map((sg) => ({
+        label:
+          sg.sub_group_en || sg.sub_group_bn || sg.name || "Unnamed Subgroup",
+        value: sg._id,
+      }));
+    }
+
+    setSelectedFilters((prev) => [...prev, newOption]);
     setIsOpen(false);
   };
 
+  // 🧩 Handle value changes
   const handleChange = (id, value) => {
     setSelectedFilters((prev) => {
       const updated = prev.map((f) => (f.id === id ? { ...f, value } : f));
-      onFilterChange && onFilterChange(updated);
+      const changed = updated.find((f) => f.id === id);
+
+      if (changed?.label === "Group") {
+        setSelectedGroupId(value); // 👈 triggers useEffect for subgroup API
+      }
+
+      if (changed?.label === "Subgroup") {
+        console.log("Selected Subgroup ID:", value);
+      }
+
       return updated;
     });
   };
 
+  // 🧩 Remove filter
   const handleRemove = (id) => {
-    setSelectedFilters((prev) => {
-      const updated = prev.filter((f) => f.id !== id);
-      onFilterChange && onFilterChange(updated);
-      return updated;
-    });
+    setSelectedFilters((prev) => prev.filter((f) => f.id !== id));
   };
 
   return (
     <div className="w-full bg-white rounded-sm border border-gray-200">
-      {/* Match table's checkbox column offset */}
-      <div className="flex items-center py-3 pl-[1rem] pr-4">
+      <div className="flex items-center py-3 pl-4 pr-4">
+        {/* Add Filter Button */}
         <div className="relative">
           <button
-            onClick={() => setIsOpen(!isOpen)}
+            onClick={() => setIsOpen((prev) => !prev)}
             className="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
           >
             <Plus className="w-4 h-4" />
@@ -74,7 +163,12 @@ const Filter = ({ onFilterChange }) => {
                 <button
                   key={option.id}
                   onClick={() => handleSelect(option)}
-                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 first:rounded-t-md last:rounded-b-md"
+                  disabled={option.label === "Subgroup" && !selectedGroupId}
+                  className={`w-full text-left px-4 py-2 text-sm ${
+                    option.label === "Subgroup" && !selectedGroupId
+                      ? "text-gray-400 cursor-not-allowed bg-gray-50"
+                      : "text-gray-700 hover:bg-gray-100"
+                  }`}
                 >
                   {option.label}
                 </button>
@@ -83,17 +177,19 @@ const Filter = ({ onFilterChange }) => {
           )}
         </div>
 
+        {/* Active Filters */}
         {selectedFilters.length > 0 && (
-          <div className="ml-4 flex gap-4 overflow-x-auto whitespace-nowrap scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 px-2 py-1 rounded-md max-w-full">
+          <div className="ml-4 flex gap-3 overflow-x-auto whitespace-nowrap scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 px-2 py-1 max-w-full">
             {selectedFilters.map((filter) => (
               <div
                 key={filter.id}
-                className="flex items-center gap-1 bg-gray-50 border border-gray-200 rounded px-2 py-1 text-xs"
+                className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded px-2 py-1 text-xs"
               >
                 <span className="text-sm text-gray-700 font-medium">
                   {filter.label}:
                 </span>
 
+                {/* Text Field */}
                 {filter.type === "text" && (
                   <input
                     type="text"
@@ -104,21 +200,34 @@ const Filter = ({ onFilterChange }) => {
                   />
                 )}
 
+                {/* Select Field */}
                 {filter.type === "select" && (
                   <select
                     value={filter.value}
                     onChange={(e) => handleChange(filter.id, e.target.value)}
                     className="border border-gray-300 rounded-md px-2 py-1 text-sm"
+                    disabled={filter.label === "Subgroup" && !selectedGroupId}
                   >
                     <option value="">Select</option>
-                    {filter.options.map((opt, i) => (
-                      <option key={i} value={opt}>
-                        {opt}
+                    {(filter.options || []).map((opt, i) => (
+                      <option key={i} value={opt.value || opt}>
+                        {opt.label || opt}
                       </option>
                     ))}
                   </select>
                 )}
 
+                {/* Date Field */}
+                {filter.type === "date" && (
+                  <input
+                    type="date"
+                    value={filter.value}
+                    onChange={(e) => handleChange(filter.id, e.target.value)}
+                    className="border border-gray-300 rounded-md px-2 py-1 text-sm"
+                  />
+                )}
+
+                {/* Remove Filter */}
                 <button
                   onClick={() => handleRemove(filter.id)}
                   className="text-gray-400 hover:text-red-500"

@@ -1,12 +1,14 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
 import DetailsPanel from "@/components/DetailsPanel";
 import { ChevronLeft, Edit2, ChevronDown } from "lucide-react";
 import dynamic from "next/dynamic";
 const ReactQuill = dynamic(() => import("react-quill-new"), { ssr: false });
 import "react-quill-new/dist/quill.snow.css";
+import { useEffect, useState } from "react";
+import { getTicketById } from "@/api/ticketingApis";
+import { useTicketContext } from "@/context/TicketContext";
 
 export default function TicketDetails() {
   const { id } = useParams();
@@ -15,220 +17,55 @@ export default function TicketDetails() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [status, setStatus] = useState("Pending");
   const [isPrivate, setIsPrivate] = useState(false);
+  const [ticket, setTicket] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [showCustomFieldModal, setShowCustomFieldModal] = useState(false);
+  const [isApiKeyEditable, setIsApiKeyEditable] = useState(false);
+  const [selectedType, setSelectedType] = useState("");
+  const { selectedItem } = useTicketContext();
 
-  // Dummy ticket data (you can later fetch from API)
+  useEffect(() => {
+    async function fetchTicket() {
+      try {
+        setLoading(true);
+        const response = await getTicketById(id);
+
+        const ticketData = response?.data?.data?.[0];
+        console.log("Fetched Ticket Data:", ticketData);
+        setTicket(ticketData || null);
+      } catch (err) {
+        console.error("Error fetching ticket:", err);
+        setError("Failed to load ticket details");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    if (id) fetchTicket();
+  }, [id]);
 
   const handleSubmit = () => {
     console.log("Submitted Message:", message);
     alert("Message submitted! (See console for content)");
   };
 
-  const data = [
-    {
-      id: 1,
-      requester: {
-        name: "Md. Jaidul Islam",
-        email: "rimonkhan2872@gmail.com",
-        avatar: "MI",
-        color: "bg-purple-500",
-      },
-      subject:
-        "OTP সম্পর্কিত সমস্যা | OTP কোডেই আসেনি | আমাদের বিক্রয় থেকে আপনার বাবুর্চি করছেন না | MNP করা নাই",
-      agent: "unassigned",
-      status: "Open",
-      lastMessage: "less than a minute ago",
-    },
-    {
-      id: 2,
-      requester: {
-        name: "Miraj",
-        email: "mirajhosinmd4@gamil.com",
-        avatar: "M",
-        color: "bg-green-500",
-      },
-      subject:
-        "OTP সম্পর্কিত সমস্যা | OTP কোডেই আসেনি | আমাদের বিক্রয় থেকে আপনার বাবুর্চি করছেন না | MNP করা আছে",
-      agent: "unassigned",
-      status: "Open",
-      lastMessage: "less than a minute ago",
-    },
-    {
-      id: 3,
-      requester: {
-        name: "রায় বানা বিদ্যা বিজয়ন",
-        email: "ranamilon188@gmail.com",
-        avatar: "রা",
-        color: "bg-red-500",
-      },
-      subject: "NID এর ছবি নিতে পারছি না।",
-      agent: "unassigned",
-      status: "Open",
-      lastMessage: "less than a minute ago",
-    },
-    {
-      id: 4,
-      requester: {
-        name: "MD Hamidur rahman",
-        email: "mdhamidurrahman886@...",
-        avatar: "MR",
-        color: "bg-purple-500",
-      },
-      subject:
-        "রেজিস্ট্রেশন সম্পর্কিত সমস্যাগুলির NID পূর্ণ বিক্রয় হাইলাইট,পূর্বাভাস NID সম্পর্কিত করছে,পূর্বাভাস সাইট NID সম্পর্কিত নাম এর ৮ টা পার হয়েছে",
-      agent: "CS-6 : IU",
-      status: "Solved",
-      lastMessage: "2 minutes ago",
-    },
-    {
-      id: 5,
-      requester: {
-        name: "Phosil Hossen",
-        email: "hossenphosil@gmail.com",
-        avatar: "PH",
-        color: "bg-purple-500",
-      },
-      subject: "NID এর ছবি নিতে পারছি না।",
-      agent: "CS-18:KA",
-      status: "Solved",
-      lastMessage: "2 minutes ago",
-    },
-    {
-      id: 6,
-      requester: {
-        name: "BRILLIANT CONNECT...",
-        email: "sabujmahmudd37@gmail...",
-        avatar: "BW",
-        color: "bg-purple-500",
-      },
-      subject: "sabuj Mahmud",
-      agent: "CS-6 : IU",
-      status: "Solved",
-      lastMessage: "2 minutes ago",
-      hasEye: true,
-    },
-    {
-      id: 7,
-      requester: {
-        name: "BRILLIANT CONNECT...",
-        email: "mmojibur895@gmail.com",
-        avatar: "BW",
-        color: "bg-purple-500",
-      },
-      subject: "md mojibur",
-      agent: "CS-6 : IU",
-      status: "Solved",
-      lastMessage: "3 minutes ago",
-    },
-    {
-      id: 8,
-      requester: {
-        name: "karim Karim",
-        email: "mk0911920@gmail.com",
-        avatar: "KK",
-        color: "bg-purple-500",
-      },
-      subject: "NID এর ছবি নিতে পারছি না।",
-      agent: "CS-18:KA",
-      status: "Solved",
-      lastMessage: "3 minutes ago",
-    },
-    {
-      id: 9,
-      requester: {
-        name: "Nieme",
-        email: "niemehmed5@gmail.com",
-        avatar: "N",
-        color: "bg-purple-500",
-      },
-      subject:
-        "OTP সম্পর্কিত সমস্যা | ২৪ ঘন্টা অপেক্ষা করতে বলা হয়েছে। ২৪ ঘন্টা পর ওটিপি পাবেন। অনুগ্রহ করে আমার OTP সিস্টেম করে দিন।",
-      agent: "unassigned",
-      status: "Open",
-      lastMessage: "5 minutes ago",
-    },
-    {
-      id: 10,
-      requester: {
-        name: "MD Rabby Abraham",
-        email: "rabbyabraham63@gmail...",
-        avatar: "MA",
-        color: "bg-green-500",
-      },
-      subject:
-        "OTP সম্পর্কিত সমস্যা | OTP কোডেই আসেনি | আমাদের বিক্রয় থেকে আপনার বাবুর্চি করছেন না | MNP করা আছে",
-      agent: "unassigned",
-      status: "Open",
-      lastMessage: "5 minutes ago",
-    },
-    {
-      id: 11,
-      requester: {
-        name: "Md Jahid",
-        email: "asrafur2@gmail.com",
-        avatar: "MJ",
-        color: "bg-green-500",
-      },
-      subject: "আমার সমস্যাই এখানে বিস্তারিত লিখুন : আমার টাকা বিডিত স্থানে না",
-      agent: "unassigned",
-      status: "Open",
-      lastMessage: "5 minutes ago",
-    },
-    {
-      id: 12,
-      requester: {
-        name: "Md Jahid",
-        email: "asrafur2@gmail.com",
-        avatar: "MJ",
-        color: "bg-green-500",
-      },
-      subject: "আমার সমস্যাই এখানে বিস্তারিত লিখুন : আমার টাকা বিডিত স্থানে না",
-      agent: "unassigned",
-      status: "Open",
-      lastMessage: "5 minutes ago",
-    },
-    {
-      id: 13,
-      requester: {
-        name: "Md Jahid",
-        email: "asrafur2@gmail.com",
-        avatar: "MJ",
-        color: "bg-green-500",
-      },
-      subject: "আমার সমস্যাই এখানে বিস্তারিত লিখুন : আমার টাকা বিডিত স্থানে না",
-      agent: "unassigned",
-      status: "Open",
-      lastMessage: "5 minutes ago",
-    },
-    {
-      id: 14,
-      requester: {
-        name: "Md Jahid",
-        email: "asrafur2@gmail.com",
-        avatar: "MJ",
-        color: "bg-green-500",
-      },
-      subject: "আমার সমস্যাই এখানে বিস্তারিত লিখুন : আমার টাকা বিডিত স্থানে না",
-      agent: "unassigned",
-      status: "Open",
-      lastMessage: "5 minutes ago",
-    },
-    {
-      id: 15,
-      requester: {
-        name: "Md Jahid",
-        email: "asrafur2@gmail.com",
-        avatar: "MJ",
-        color: "bg-green-500",
-      },
-      subject: "আমার সমস্যাই এখানে বিস্তারিত লিখুন : আমার টাকা বিডিত স্থানে না",
-      agent: "unassigned",
-      status: "Open",
-      lastMessage: "5 minutes ago",
-    },
-  ];
+  if (loading) {
+    return (
+      <div className="p-10 text-center text-gray-600">
+        <h2 className="text-xl font-semibold">Loading ticket...</h2>
+      </div>
+    );
+  }
 
-  // ✅ Find matching ticket based on URL ID
-  const ticket = useMemo(() => data.find((t) => t.id === Number(id)), [id]);
+  if (error) {
+    return (
+      <div className="p-10 text-center text-red-600">
+        <h2 className="text-xl font-semibold">Error</h2>
+        <p className="text-sm mt-2">{error}</p>
+      </div>
+    );
+  }
 
   if (!ticket) {
     return (
@@ -239,13 +76,208 @@ export default function TicketDetails() {
     );
   }
 
+  const CustomFieldModal = () => (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg w-full max-w-4xl mx-4 shadow-xl p-6 relative flex flex-col md:flex-row gap-6">
+        {/* Left side – Form */}
+        <div className="flex-1">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-800">
+              Create custom field
+            </h3>
+            <button
+              onClick={() => setShowCustomFieldModal(false)}
+              className="text-gray-500 hover:text-gray-700 text-xl font-bold"
+            >
+              ×
+            </button>
+          </div>
+
+          {/* Display Name */}
+          <label className="block text-sm text-gray-700 font-medium mb-1">
+            Display name
+          </label>
+          <input
+            type="text"
+            placeholder="Name a custom field, e.g. order number"
+            className="w-full border border-gray-300 rounded px-3 py-2 text-sm mb-3 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+          />
+
+          {/* Type */}
+          <label className="block text-sm text-gray-700 font-medium mb-1">
+            Type
+          </label>
+          <select
+            value={selectedType}
+            onChange={(e) => setSelectedType(e.target.value)}
+            className="w-full border border-gray-300 rounded px-3 py-2 text-sm mb-3 bg-white focus:ring-1 focus:ring-blue-500"
+          >
+            <option value="" disabled hidden>
+              Choose custom field type
+            </option>
+            <option value="single-line">Single-line text</option>
+            <option value="multi-line">Multi-line text</option>
+            <option value="link">Link</option>
+            <option value="date">Date</option>
+          </select>
+
+          {/* Teams with access */}
+          <label className="block text-sm text-gray-700 font-medium mb-1">
+            Teams with access
+          </label>
+          <select className="w-full border border-gray-300 rounded px-3 py-2 text-sm mb-3 bg-white focus:ring-1 focus:ring-blue-500">
+            <option value="">Select who can see custom field values</option>
+            <option value="all">All Teams</option>
+            <option value="admin">Admins only</option>
+            <option value="support">Support Team</option>
+          </select>
+
+          {/* Who can change */}
+          <label className="block text-sm text-gray-700 font-medium mb-2">
+            Who can change the custom field value?
+          </label>
+          <div className="space-y-2 text-sm text-gray-900 mb-3">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="radio"
+                name="field-change-access"
+                value="admin"
+                className="text-blue-600 focus:ring-blue-500"
+              />
+              <span>Admins only</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="radio"
+                name="field-change-access"
+                value="admin_agent"
+                className="text-blue-600 focus:ring-blue-500"
+              />
+              <span>Admins and agents</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="radio"
+                name="field-change-access"
+                value="none"
+                className="text-blue-600 focus:ring-blue-500"
+              />
+              <span>No user (API integration)</span>
+            </label>
+          </div>
+
+          {/* API Key Name */}
+          <div className="flex items-center justify-between mt-3 mb-1">
+            <label className="block text-sm text-gray-700 font-medium">
+              API Key name
+            </label>
+            <button
+              type="button"
+              onClick={() => setIsApiKeyEditable((prev) => !prev)}
+              className="text-blue-600 text-xs font-medium hover:underline"
+            >
+              {isApiKeyEditable ? "Lock" : "Edit"}
+            </button>
+          </div>
+          <input
+            type="text"
+            placeholder="Type display name first"
+            disabled={!isApiKeyEditable}
+            className={`w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-blue-500 focus:outline-none ${
+              !isApiKeyEditable ? "bg-gray-100 cursor-not-allowed" : "bg-white"
+            }`}
+          />
+
+          {/* Footer buttons */}
+          <div className="mt-5 flex justify-end gap-2">
+            <button
+              onClick={() => setShowCustomFieldModal(false)}
+              className="px-4 py-2 text-sm text-gray-700 border border-gray-300 rounded hover:bg-gray-100"
+            >
+              Cancel
+            </button>
+            <button className="px-4 py-2 text-sm text-white bg-blue-600 rounded hover:bg-blue-700">
+              Create
+            </button>
+          </div>
+        </div>
+
+        {/* Right side – Preview */}
+        {/* Right side – Preview */}
+        <div className="hidden md:block w-[40%] border-l border-gray-200 pl-6">
+          <h4 className="text-sm font-semibold text-gray-800 mb-2">Preview</h4>
+
+          {/* Preview cards */}
+          <div className="space-y-4">
+            {/* Ticket Info */}
+            <div className="bg-white border rounded-lg p-4 shadow-sm">
+              <h5 className="text-sm font-semibold text-gray-800 mb-3">
+                Ticket info
+              </h5>
+
+              {selectedType === "single-line" && (
+                <div className="space-y-2">
+                  <div className="h-2 w-24 bg-gray-200 rounded"></div>
+                  <div className="h-2 w-32 bg-gray-200 rounded"></div>
+                  <div className="h-2 w-20 bg-blue-500 rounded"></div>
+                </div>
+              )}
+
+              {selectedType === "multi-line" && (
+                <div className="space-y-2">
+                  <div className="h-2 w-28 bg-gray-200 rounded"></div>
+                  <div className="h-2 w-36 bg-gray-200 rounded"></div>
+                  <div className="h-2 w-40 bg-blue-500 rounded"></div>
+                  <div className="h-2 w-32 bg-blue-500 rounded"></div>
+                </div>
+              )}
+
+              {selectedType === "link" && (
+                <div className="space-y-2">
+                  <div className="h-2 w-24 bg-gray-200 rounded"></div>
+                  <div className="h-2 w-32 bg-gray-200 rounded"></div>
+                  <div className="h-2 w-40 bg-blue-500 rounded"></div>
+                </div>
+              )}
+
+              {selectedType === "date" && (
+                <div className="space-y-2">
+                  <div className="h-2 w-20 bg-gray-200 rounded"></div>
+                  <div className="h-2 w-28 bg-gray-200 rounded"></div>
+                  <div className="h-2 w-32 bg-blue-500 rounded"></div>
+                </div>
+              )}
+
+              {!selectedType && (
+                <p className="text-xs text-gray-500">
+                  Choose a custom field type to see a preview here.
+                </p>
+              )}
+            </div>
+
+            {/* Responsibility */}
+            <div className="bg-white border rounded-lg p-4 shadow-sm">
+              <h5 className="text-sm font-semibold text-gray-800 mb-3">
+                Responsibility
+              </h5>
+              <div className="flex items-center gap-3">
+                <div className="h-8 w-8 bg-gray-200 rounded-full"></div>
+                <div className="space-y-2">
+                  <div className="h-2 w-28 bg-gray-200 rounded"></div>
+                  <div className="h-2 w-20 bg-gray-200 rounded"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
   // ✅ Full grid layout
   return (
     <div className="p-6 min-h-screen bg-gray-50">
-      <h1 className="text-2xl font-semibold mb-6 text-gray-800">
-        Ticket #{ticket.id}
-      </h1>
-
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         {/* 🎟️ Left Grid (8 columns): Ticket Info */}
         <div className="lg:col-span-8 bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
@@ -258,7 +290,7 @@ export default function TicketDetails() {
                   className="w-5 h-5 cursor-pointer hover:text-blue-600 transition-colors"
                 />
                 <span className="text-sm text-gray-700 flex-1 font-medium">
-                  Ticket #{ticket.id}
+                  {ticket?.title}
                 </span>
                 <Edit2 className="w-4 h-4 text-gray-500 cursor-pointer" />
               </div>
@@ -266,46 +298,76 @@ export default function TicketDetails() {
 
             {/* 🔹 Ticket Info Section */}
             <div className="p-6">
-              <div className="bg-gray-50 border rounded-lg p-6 mb-6 shadow-sm">
-                <h2 className="text-lg font-semibold text-gray-800 mb-4">
-                  Ticket Information
-                </h2>
+              {/* Map comments dynamically */}
+              {ticket?.comments?.length > 0 ? (
+                ticket.comments.map((comment, index) => (
+                  <div
+                    key={comment.id || index}
+                    className="border border-gray-300 rounded-lg mb-4 bg-white overflow-hidden"
+                  >
+                    {/* Header */}
+                    <div className="bg-gray-300 px-4 py-2 rounded-t-lg flex items-center justify-between">
+                      <h3 className="text-sm font-semibold text-gray-800 mb-1">
+                        {comment.commenter_name || "Unknown"}
+                      </h3>
+                      <p className="text-xs text-gray-600">
+                        {(() => {
+                          const created = new Date(comment.created_at);
+                          const diffMs = Date.now() - created.getTime();
+                          const diffMinutes = Math.floor(diffMs / 60000);
+                          const diffHours = Math.floor(diffMs / 3600000);
+                          const diffDays = Math.floor(diffHours / 24);
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-3 text-sm text-gray-700">
-                  <p>
-                    <strong>Requester:</strong> {ticket.requester.name}{" "}
-                    <span className="text-gray-500">
-                      ({ticket.requester.email})
-                    </span>
-                  </p>
-                  <p>
-                    <strong>Agent:</strong> {ticket.agent}
-                  </p>
-                  <p className="col-span-2">
-                    <strong>Subject:</strong> {ticket.subject}
-                  </p>
-                  <p>
-                    <strong>Status:</strong>{" "}
-                    <span
-                      className={`font-medium ${
-                        ticket.status === "Open"
-                          ? "text-blue-600"
-                          : ticket.status === "Solved"
-                          ? "text-green-600"
-                          : "text-gray-600"
-                      }`}
-                    >
-                      {ticket.status}
-                    </span>
-                  </p>
-                  <p>
-                    <strong>Last Message:</strong> {ticket.lastMessage}
-                  </p>
-                  <p>
-                    <strong>Timestamp:</strong> {ticket.timestamp}
-                  </p>
-                </div>
-              </div>
+                          if (diffMinutes < 1) return "just now";
+                          if (diffMinutes < 60)
+                            return `about ${diffMinutes} minute${
+                              diffMinutes > 1 ? "s" : ""
+                            } ago`;
+                          if (diffHours < 24)
+                            return `about ${diffHours} hour${
+                              diffHours > 1 ? "s" : ""
+                            } ago`;
+                          return `about ${diffDays} day${
+                            diffDays > 1 ? "s" : ""
+                          } ago`;
+                        })()}
+                      </p>
+                    </div>
+
+                    {/* Body */}
+                    <div className="border-t border-gray-200 px-4 py-3 text-sm text-gray-800 leading-relaxed">
+                      <p>
+                        <span className="font-medium">From:</span>{" "}
+                        <span className="text-gray-800">
+                          appticket@brilliant.com.bd
+                        </span>
+                      </p>
+                      <p className="mb-3">
+                        <span className="font-medium">Reply to:</span>{" "}
+                        <span className="text-gray-800">
+                          ratonsarkar17d06a011@gmail.com
+                        </span>
+                      </p>
+
+                      {/* Message */}
+                      <div className="mt-2 whitespace-pre-line text-gray-800">
+                        You have received a new enquiry from Brilliant FAQ
+                        section:
+                        {"\n\n"}IP Address: 182.48.65.10
+                        {"\n\n"}Name: Raton Sarkar
+                        {"\n"}Email: ratonsarkar17d06a011@gmail.com
+                        {"\n"}Brilliant_Registered_Number: 01927355909
+                        {"\n"}Issue: NID এর ছবি দিতে পারছি না।
+                        {"\n"}gid: 39
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-gray-500 text-sm italic">
+                  No messages found for this ticket.
+                </p>
+              )}
             </div>
 
             {/* 📝 Rich Text Editor */}
@@ -405,9 +467,18 @@ export default function TicketDetails() {
 
         {/* 💬 Right Grid (4 columns): DetailsPanel */}
         <div className="lg:col-span-4 bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
-          <DetailsPanel />
+          <DetailsPanel
+            ticket={ticket}
+            onOpenCustomFieldModal={() => setShowCustomFieldModal(true)}
+            onTicketUpdated={() => {
+              // ✅ Update the state immediately
+              setTicket((prev) => ({ ...prev, is_resolved: "True" }));
+            }}
+          />
         </div>
       </div>
+
+      {showCustomFieldModal && <CustomFieldModal />}
     </div>
   );
 }

@@ -1,6 +1,8 @@
 "use client";
 
 import { Plus, Search, Info } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useRouter, usePathname } from "next/navigation";
 import {
   Tooltip,
   TooltipContent,
@@ -9,17 +11,39 @@ import {
 } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useTicketContext } from "@/context/TicketContext";
 
 export default function TicketSidebar() {
+  const { selectedItem, setSelectedItem } = useTicketContext();
+  const router = useRouter();
+  const pathname = usePathname();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // ✅ Apply selectedItem only after mount (client side)
+  useEffect(() => {
+    if (!mounted) return;
+
+    if (pathname === "/tickets") setSelectedItem("");
+    else if (pathname === "/forwarded-tickets") setSelectedItem("forwarded");
+    else if (pathname === "/group-info") setSelectedItem("group");
+    else if (pathname === "/report") setSelectedItem("report");
+    else if (pathname === "/user-info") setSelectedItem("user");
+  }, [pathname, mounted]);
+
   return (
     <div className="w-full bg-background border-r border-border flex flex-col min-h-full relative">
-      {/* Fixed top section (New Ticket + Search) */}
+      {/* Fixed top section */}
       <div className="sticky top-0 z-20 bg-white border-b border-border p-4">
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-xl font-bold text-foreground">Tickets</h1>
           <Button
             size="sm"
-            className="bg-blue-600 hover:bg-blue-700 text-white gap-1"
+            onClick={() => router.push("/createTicket")}
+            className="bg-blue-600 hover:bg-blue-700 text-white gap-1 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             New ticket
@@ -38,7 +62,50 @@ export default function TicketSidebar() {
 
       {/* Scrollable Middle Content */}
       <div className="flex-1 overflow-y-auto">
-        {/* All Recent Tickets Section */}
+        <div className="p-4">
+          <SidebarItem
+            label="All Tickets"
+            isActive={mounted && selectedItem === ""}
+            onClick={() => {
+              setSelectedItem("");
+              router.push("/tickets");
+            }}
+          />
+          <SidebarItem
+            label="Forwarded Tickets"
+            isActive={mounted && selectedItem === "forwarded"}
+            onClick={() => {
+              setSelectedItem("forwarded");
+              router.push("/forwarded-tickets");
+            }}
+          />
+          <SidebarItem
+            label="User"
+            isActive={mounted && selectedItem === "user"}
+            onClick={() => {
+              setSelectedItem("user");
+              router.push("/user-info"); // ✅ add this line
+            }}
+          />
+          <SidebarItem
+            label="Group"
+            isActive={mounted && selectedItem === "group"}
+            onClick={() => {
+              setSelectedItem("group");
+              router.push("/group-info");
+            }}
+          />
+          <SidebarItem
+            label="Report"
+            isActive={mounted && selectedItem === "report"}
+            onClick={() => {
+              setSelectedItem("report");
+              router.push("/report");
+            }}
+          />
+        </div>
+
+        {/* Recent Tickets */}
         <div className="p-4 border-b border-border">
           <h2 className="text-blue-600 font-semibold text-sm mb-3">
             All recent tickets
@@ -50,7 +117,7 @@ export default function TicketSidebar() {
           </div>
         </div>
 
-        {/* Ticket Views Section */}
+        {/* Ticket Views */}
         <div className="p-4 border-b border-border">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-muted-foreground font-semibold text-xs uppercase tracking-wide">
@@ -66,7 +133,7 @@ export default function TicketSidebar() {
           <SidebarItem label="My tickets in last 7 days" count="99+" />
         </div>
 
-        {/* Statuses Section */}
+        {/* Statuses */}
         <div className="p-4 border-b border-border">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-muted-foreground font-semibold text-xs uppercase tracking-wide">
@@ -97,7 +164,7 @@ export default function TicketSidebar() {
           </div>
         </div>
 
-        {/* Folders Section */}
+        {/* Folders */}
         <div className="p-4">
           <h3 className="text-muted-foreground font-semibold text-xs uppercase tracking-wide mb-3">
             Folders
@@ -116,20 +183,33 @@ export default function TicketSidebar() {
           variant="outline"
           className="w-full text-foreground border-border hover:bg-muted bg-transparent"
         >
-          Manage your HelpDesk
+          Manage your Ticketing System
         </Button>
       </div>
     </div>
   );
 }
 
-/* Reusable small sidebar item component */
-function SidebarItem({ label, count }) {
+/* Small reusable component */
+function SidebarItem({ label, count, isActive, onClick }) {
   return (
-    <div className="flex items-center justify-between py-2 px-2 hover:bg-muted rounded cursor-pointer">
-      <span className="text-foreground text-sm">{label}</span>
+    <div
+      onClick={onClick}
+      className={`flex items-center justify-between py-2 px-2 rounded cursor-pointer transition-all duration-150 ${
+        isActive
+          ? "bg-blue-100 text-blue-700 font-semibold"
+          : "hover:bg-muted text-foreground"
+      }`}
+    >
+      <span className="text-sm">{label}</span>
       {count && (
-        <span className="bg-muted text-muted-foreground text-xs font-semibold px-2 py-1 rounded">
+        <span
+          className={`text-xs font-semibold px-2 py-1 rounded ${
+            isActive
+              ? "bg-blue-200 text-blue-700"
+              : "bg-muted text-muted-foreground"
+          }`}
+        >
           {count}
         </span>
       )}
