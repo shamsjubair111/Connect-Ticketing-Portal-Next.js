@@ -11,6 +11,29 @@ const Filter = ({ onFilterChange }) => {
   const [subgroups, setSubgroups] = useState([]);
   const [selectedGroupId, setSelectedGroupId] = useState(null);
 
+  // ✅ Load saved filters when Filter component mounts
+  useEffect(() => {
+    const saved = localStorage.getItem("ticket_filters");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        // restore only if parsed is an array
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setSelectedFilters(parsed);
+
+          // If a saved filter includes a group, restore its ID too (so subgroups load correctly)
+          const savedGroup = parsed.find((f) => f.label === "Group" && f.value);
+          if (savedGroup) {
+            setSelectedGroupId(savedGroup.value);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to parse saved filters", err);
+        localStorage.removeItem("ticket_filters");
+      }
+    }
+  }, []);
+
   const filterOptions = [
     { id: 1, label: "Ticket Id", type: "text" },
     { id: 2, label: "Problematic Number", type: "text" },
@@ -85,9 +108,14 @@ const Filter = ({ onFilterChange }) => {
     };
   }, [selectedGroupId]);
 
-  // ✅ Notify parent when filters change
+  // ✅ Notify parent + persist filters
   useEffect(() => {
     if (onFilterChange) onFilterChange(selectedFilters);
+
+    // Prevent overwriting localStorage if filters are still loading
+    if (selectedFilters.length > 0) {
+      localStorage.setItem("ticket_filters", JSON.stringify(selectedFilters));
+    }
   }, [selectedFilters, onFilterChange]);
 
   // 🧩 Add filter
@@ -139,9 +167,16 @@ const Filter = ({ onFilterChange }) => {
     });
   };
 
-  // 🧩 Remove filter
+  // 🧩 Remove filter + update localStorage
   const handleRemove = (id) => {
-    setSelectedFilters((prev) => prev.filter((f) => f.id !== id));
+    setSelectedFilters((prev) => {
+      const updated = prev.filter((f) => f.id !== id);
+
+      // ✅ Update localStorage instantly
+      localStorage.setItem("ticket_filters", JSON.stringify(updated));
+
+      return updated;
+    });
   };
 
   return (

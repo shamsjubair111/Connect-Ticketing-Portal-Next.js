@@ -88,6 +88,20 @@ export default function TicketsPage() {
     }
   };
 
+  // ✅ Load saved filters from localStorage when page mounts
+  useEffect(() => {
+    const saved = localStorage.getItem("ticket_filters");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        setFilters(parsed);
+      } catch (e) {
+        console.error("Failed to parse saved filters", e);
+        localStorage.removeItem("ticket_filters");
+      }
+    }
+  }, []);
+
   // ✅ Debounce ticket API calls on filter change
   useEffect(() => {
     const debounce = setTimeout(() => {
