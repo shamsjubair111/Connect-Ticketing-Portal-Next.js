@@ -14,11 +14,9 @@ export default function TicketsPage() {
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [filters, setFilters] = useState([]);
-  const { selectedItem } = useTicketContext();
 
-  const handleFilterChange = (updatedFilters) => {
-    setFilters(updatedFilters);
-  };
+  const { selectedItem, selectedStatus } = useTicketContext();
+  const handleFilterChange = (updatedFilters) => setFilters(updatedFilters);
 
   // ✅ Build query params based on selected filters
   const buildFilterParams = () => {
@@ -61,19 +59,21 @@ export default function TicketsPage() {
     return params;
   };
 
+  // ✅ API Fetch Function (now includes sidebar item type)
   const fetchTickets = async (pageNo) => {
     const params = buildFilterParams();
     setLoading(true);
+    setTickets([]);
 
     try {
       const res = await getTicketsByPage(
         pageNo,
-        params.selectedTab || "",
+        params.selectedTab || "", // ❗ ONLY Ticket Type filter
         params.selectedGroupId || "",
         params.ticketIdForMyTicket || "",
         params.issueForMyTicket || "",
         params.selectedSubGroupId || "",
-        params.statusForMyTicket || "",
+        params.statusForMyTicket || selectedStatus || "",
         params.pNumberForMyTicket || "",
         params.startDate || "",
         params.endDate || ""
@@ -88,7 +88,7 @@ export default function TicketsPage() {
     }
   };
 
-  // ✅ Load saved filters from localStorage when page mounts
+  // ✅ Load saved filters once
   useEffect(() => {
     const saved = localStorage.getItem("ticket_filters");
     if (saved) {
@@ -102,19 +102,30 @@ export default function TicketsPage() {
     }
   }, []);
 
-  // ✅ Debounce ticket API calls on filter change
+  // ✅ Debounce API call — now runs when filters, page, or sidebar selection changes
   useEffect(() => {
     const debounce = setTimeout(() => {
       fetchTickets(page);
-    }, 700); // wait 700ms after last filter change
+    }, 600); // 0.6s debounce for smoother UX
+
     return () => clearTimeout(debounce);
-  }, [page, filters]);
+  }, [page, filters, selectedItem, selectedStatus]); // ✅ added selectedItem dependency
 
   return (
     <div className="flex flex-col h-full">
       <div className="bg-gray-50 px-6 pt-6 pb-3 flex-shrink-0">
         <div className="border border-gray-200 rounded-sm bg-white flex items-center h-[52px] px-5 w-full mb-4">
-          <h3 className="font-bold text-[18px]">All recent tickets</h3>
+          <h3 className="font-bold text-[18px]">
+            {selectedItem === "forwarded"
+              ? "Forwarded Tickets"
+              : selectedItem === "group"
+              ? "Group Tickets"
+              : selectedItem === "user"
+              ? "User Tickets"
+              : selectedItem === "report"
+              ? "Reports"
+              : "All Recent Tickets"}
+          </h3>
         </div>
 
         <Filter onFilterChange={handleFilterChange} />

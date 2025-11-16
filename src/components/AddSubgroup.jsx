@@ -6,7 +6,13 @@ import { ImCross } from "react-icons/im";
 import { alertContext } from "@/hooks/alertContext";
 import { createSubGroup } from "@/api/ticketingApis";
 
-const AddSubgroup = ({ isOpen, onClose, groupId, getSubgroup }) => {
+const AddSubgroup = ({
+  isOpen,
+  onClose,
+  groupId,
+  getSubgroup,
+  resetToFirstPage,
+}) => {
   const [subgroupBn, setSubgroupBn] = useState("");
   const [subgroupEn, setSubgroupEn] = useState("");
   const [loading, setLoading] = useState(false);
@@ -42,6 +48,7 @@ const AddSubgroup = ({ isOpen, onClose, groupId, getSubgroup }) => {
       });
 
       await getSubgroup(); // refresh list
+      resetToFirstPage();
       setSubgroupBn("");
       setSubgroupEn("");
       onClose(); // close modal

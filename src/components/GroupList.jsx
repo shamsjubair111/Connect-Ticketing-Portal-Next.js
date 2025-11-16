@@ -309,6 +309,7 @@ const GroupList = ({ data, getSubgroup, resetToFirstPage }) => {
         onClose={closeModal}
         groupId={groupId}
         getSubgroup={getSubgroup}
+        resetToFirstPage={resetToFirstPage}
       />
     </div>
   );

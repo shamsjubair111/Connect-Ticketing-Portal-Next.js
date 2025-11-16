@@ -14,7 +14,8 @@ import { Input } from "@/components/ui/input";
 import { useTicketContext } from "@/context/TicketContext";
 
 export default function TicketSidebar() {
-  const { selectedItem, setSelectedItem } = useTicketContext();
+  const { selectedItem, setSelectedItem, selectedStatus, setSelectedStatus } =
+    useTicketContext();
   const router = useRouter();
   const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
@@ -33,6 +34,23 @@ export default function TicketSidebar() {
     else if (pathname === "/report") setSelectedItem("report");
     else if (pathname === "/user-info") setSelectedItem("user");
   }, [pathname, mounted]);
+
+  function clearFilterStatus() {
+    try {
+      // Remove "Status" filter only, not everything
+      const saved = localStorage.getItem("ticket_filters");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        const updated = parsed.filter((f) => f.label !== "Status");
+        localStorage.setItem("ticket_filters", JSON.stringify(updated));
+      }
+
+      // Broadcast a manual event to let Filter.jsx know
+      window.dispatchEvent(new Event("storage"));
+    } catch (e) {
+      console.error("Failed to clear filters:", e);
+    }
+  }
 
   return (
     <div className="w-full bg-background border-r border-border flex flex-col min-h-full relative">
@@ -111,9 +129,8 @@ export default function TicketSidebar() {
             All recent tickets
           </h2>
           <div className="space-y-2">
-            <SidebarItem label="Tickets to handle" count="99+" />
-            <SidebarItem label="My open tickets" count="1" />
-            <SidebarItem label="Undelivered" count="99+" />
+            <SidebarItem label="Tickets to handle" />
+            <SidebarItem label="My open tickets" />
           </div>
         </div>
 
@@ -130,7 +147,7 @@ export default function TicketSidebar() {
               Manage
             </a>
           </div>
-          <SidebarItem label="My tickets in last 7 days" count="99+" />
+          <SidebarItem label="My tickets in last 7 days" />
         </div>
 
         {/* Statuses */}
@@ -155,12 +172,38 @@ export default function TicketSidebar() {
             </TooltipProvider>
           </div>
           <div className="space-y-2">
-            <SidebarItem label="Open" count="99+" />
-            <SidebarItem label="Pending" count="0" />
-            <SidebarItem label="On hold" count="0" />
-            <SidebarItem label="Solved" />
-            <SidebarItem label="Closed" />
-            <SidebarItem label="Reopened" />
+            <SidebarItem
+              label="All"
+              isActive={!selectedStatus} // ✅ active when no status selected
+              onClick={() => {
+                clearFilterStatus(); // ✅ remove any saved filters
+                setSelectedStatus(""); // ✅ reset to show all
+              }}
+            />
+            <SidebarItem
+              label="Open"
+              isActive={selectedStatus === "open"}
+              onClick={() => {
+                clearFilterStatus(); // ✅ clears any active Status filter
+                setSelectedStatus("open");
+              }}
+            />
+            <SidebarItem
+              label="In Progress"
+              isActive={selectedStatus === "in_progress"}
+              onClick={() => {
+                clearFilterStatus();
+                setSelectedStatus("in_progress");
+              }}
+            />
+            <SidebarItem
+              label="Solved"
+              isActive={selectedStatus === "closed"}
+              onClick={() => {
+                clearFilterStatus();
+                setSelectedStatus("closed");
+              }}
+            />
           </div>
         </div>
 
@@ -170,8 +213,6 @@ export default function TicketSidebar() {
             Folders
           </h3>
           <div className="space-y-2">
-            <SidebarItem label="Archive" />
-            <SidebarItem label="Spam" />
             <SidebarItem label="Trash" />
           </div>
         </div>

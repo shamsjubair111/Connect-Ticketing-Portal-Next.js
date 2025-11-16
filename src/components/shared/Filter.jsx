@@ -34,6 +34,22 @@ const Filter = ({ onFilterChange }) => {
     }
   }, []);
 
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const saved = localStorage.getItem("ticket_filters");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        setSelectedFilters(parsed);
+      } else {
+        setSelectedFilters([]);
+      }
+    };
+
+    // ✅ React to manual "storage" updates from sidebar
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
+  }, []);
+
   const filterOptions = [
     { id: 1, label: "Ticket Id", type: "text" },
     { id: 2, label: "Problematic Number", type: "text" },
@@ -170,9 +186,21 @@ const Filter = ({ onFilterChange }) => {
   // 🧩 Remove filter + update localStorage
   const handleRemove = (id) => {
     setSelectedFilters((prev) => {
+      const removed = prev.find((f) => f.id === id);
       const updated = prev.filter((f) => f.id !== id);
 
-      // ✅ Update localStorage instantly
+      // If group was removed → reset all subgroup dependencies
+      if (removed?.label === "Group") {
+        setSelectedGroupId(null);
+        setSubgroups([]);
+      }
+
+      // If subgroup was removed → just clear subgroup value
+      if (removed?.label === "Subgroup") {
+        // optional: no need to reset selectedGroupId
+      }
+
+      // Update localStorage
       localStorage.setItem("ticket_filters", JSON.stringify(updated));
 
       return updated;

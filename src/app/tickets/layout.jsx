@@ -1,3 +1,4 @@
+// File: /app/tickets/layout.jsx
 "use client";
 
 import { usePathname } from "next/navigation";
@@ -11,6 +12,7 @@ export default function TicketsLayout({ children }) {
   return (
     <TicketProvider>
       <div className="flex h-[calc(100vh-4rem)]">
+        {/* hide sidebar on ticket detail page */}
         {!isTicketDetails && (
           <aside className="w-80 border-r border-gray-200 bg-white overflow-y-auto">
             <TicketSidebar />

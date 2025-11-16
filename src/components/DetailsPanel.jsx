@@ -143,7 +143,7 @@ export default function DetailsPanel({
 
           {showMenu && (
             <>
-              {ticket?.is_resolved === "True" ? (
+              {String(ticket?.is_resolved).toLowerCase() === "true" ? (
                 <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-50">
                   <ul className="py-2 flex justify-center">
                     <li>
@@ -377,19 +377,9 @@ export default function DetailsPanel({
                 className="mt-1 rounded border border-gray-300 bg-white px-2 py-1 text-sm text-gray-900"
               >
                 <option>Open</option>
-                <option>Pending</option>
-                <option>On Hold</option>
-                <option>Closed</option>
+                <option>In Progress</option>
                 <option>Solved</option>
               </select>
-            </div>
-
-            <div className="flex items-center gap-2 text-sm text-gray-900">
-              <span className="text-gray-600">Rating:</span>
-              <span className="flex items-center gap-1">
-                Not rated
-                <Info size={16} className="text-gray-400" />
-              </span>
             </div>
 
             <div>
@@ -410,14 +400,6 @@ export default function DetailsPanel({
               <label className="text-sm text-gray-600">Source:</label>
               <p className="mt-1 text-sm text-gray-900">Email</p>
             </div>
-
-            <div>
-              <label className="text-sm text-gray-600">Language:</label>
-              <p className="mt-1 flex items-center gap-1 text-sm text-gray-900">
-                Not detected
-                <Info size={16} className="text-gray-400" />
-              </p>
-            </div>
           </AccordionContent>
         </AccordionItem>
 
@@ -434,7 +416,7 @@ export default function DetailsPanel({
         </AccordionItem>
 
         {/* Custom Fields */}
-        <AccordionItem value="custom-fields">
+        {/* <AccordionItem value="custom-fields">
           <AccordionTrigger className="py-3 text-base font-semibold text-gray-900 hover:no-underline">
             Custom fields
           </AccordionTrigger>
@@ -453,7 +435,7 @@ export default function DetailsPanel({
               Create custom field
             </button>
           </AccordionContent>
-        </AccordionItem>
+        </AccordionItem> */}
 
         {/* Responsibility */}
         <AccordionItem value="responsibility">
@@ -506,9 +488,9 @@ export default function DetailsPanel({
                   Followers <span className="text-gray-600">(0)</span>
                 </p>
                 <div className="flex items-center gap-2 text-xs">
-                  <button className="text-blue-600 hover:text-blue-700 font-medium cursor-pointer">
+                  {/* <button className="text-blue-600 hover:text-blue-700 font-medium cursor-pointer">
                     Follow
-                  </button>
+                  </button> */}
                   <button className="text-blue-600 hover:text-blue-700 font-medium cursor-pointer">
                     Edit
                   </button>
@@ -522,7 +504,7 @@ export default function DetailsPanel({
         </AccordionItem>
 
         {/* Requester */}
-        <AccordionItem value="requester">
+        {/* <AccordionItem value="requester">
           <AccordionTrigger className="py-3 text-base font-semibold text-gray-900 hover:no-underline">
             Requester
           </AccordionTrigger>
@@ -545,10 +527,10 @@ export default function DetailsPanel({
               + Add more people
             </button>
           </AccordionContent>
-        </AccordionItem>
+        </AccordionItem> */}
 
         {/* Requester’s Tickets */}
-        <AccordionItem value="requester-tickets">
+        {/* <AccordionItem value="requester-tickets">
           <AccordionTrigger className="py-3 text-base font-semibold text-gray-900 hover:no-underline">
             Requester’s tickets
           </AccordionTrigger>
@@ -571,7 +553,7 @@ export default function DetailsPanel({
               </p>
             </div>
           </AccordionContent>
-        </AccordionItem>
+        </AccordionItem> */}
 
         {/* Similar Tickets */}
         <AccordionItem value="similar-tickets">

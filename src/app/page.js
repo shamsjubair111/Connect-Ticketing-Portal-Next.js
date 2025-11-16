@@ -159,23 +159,18 @@ export default function LoginView() {
 
         {/* OTP Field */}
         {show && (
-          <Tooltip
-            content="Your OTP will remain active for 5 minutes from the time you receive it."
-            className={`${otpError ? "hidden" : "block"}`}
-          >
-            <div className="w-full mb-4">
-              <Label htmlFor="otp" value="Enter OTP" className="text-gray-700" />
-              <TextInput
-                id="otp"
-                addon={<AiFillLock />}
-                required
-                placeholder="Enter your OTP"
-                value={otp}
-                onChange={(e) => setOtp(e.target.value)}
-                className="mt-1"
-              />
-            </div>
-          </Tooltip>
+        <div className="w-full mb-4">
+        <Label htmlFor="otp" value="Enter OTP" className="text-gray-700" />
+        <TextInput
+          id="otp"
+          addon={<AiFillLock />}
+          required
+          placeholder="Enter your OTP"
+          value={otp}
+          onChange={(e) => setOtp(e.target.value)}
+          className="mt-1"
+        />
+      </div>
         )}
 
         {/* Button */}

@@ -137,3 +137,7 @@ export function validateAccessToken(token) {
   };
   return axios.get(`/api/v1/users/validate-token`, config);
 } // <-- Added missing closing brace
+
+export function addComment(data) {
+  return execute.post(`${API_BASE_URL}/api/v1/tickets/add-comment`, data);
+}

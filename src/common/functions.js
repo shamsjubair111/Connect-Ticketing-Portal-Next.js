@@ -1,9 +1,8 @@
 import { postAttachmentToS3, getPresignedPost } from "../api/ticketingApis";
 export function checkPhoneFormat(num) {
-  const regex = /^8809638.{6}$/;
-  if (regex.test(num)) {
-    return true;
-  } else return false;
+
+  const regex = /^8809\d{9}$/;
+  return regex.test(num);
 }
 
 export function checkPhoneFormatEleven(num) {

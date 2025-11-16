@@ -2,483 +2,360 @@
 
 import { useParams, useRouter } from "next/navigation";
 import DetailsPanel from "@/components/DetailsPanel";
-import { ChevronLeft, Edit2, ChevronDown } from "lucide-react";
+import { ChevronLeft, Edit2 } from "lucide-react";
 import dynamic from "next/dynamic";
-const ReactQuill = dynamic(() => import("react-quill-new"), { ssr: false });
-import "react-quill-new/dist/quill.snow.css";
-import { useEffect, useState } from "react";
-import { getTicketById } from "@/api/ticketingApis";
+import { useEffect, useMemo, useRef, useState } from "react";
+import TurndownService from "turndown";
+import axios from "axios";
+import {
+  getTicketById,
+  addComment,
+  postAttachmentToS3,
+} from "@/api/ticketingApis";
 import { useTicketContext } from "@/context/TicketContext";
+import "react-quill-new/dist/quill.snow.css";
+
+const ReactQuill = dynamic(() => import("react-quill-new"), { ssr: false });
 
 export default function TicketDetails() {
   const { id } = useParams();
   const router = useRouter();
-  const [message, setMessage] = useState("");
-  const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [status, setStatus] = useState("Pending");
-  const [isPrivate, setIsPrivate] = useState(false);
   const [ticket, setTicket] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [showCustomFieldModal, setShowCustomFieldModal] = useState(false);
-  const [isApiKeyEditable, setIsApiKeyEditable] = useState(false);
-  const [selectedType, setSelectedType] = useState("");
+  const [message, setMessage] = useState("");
+  const [attachments, setAttachments] = useState([]);
+  const [isPrivate, setIsPrivate] = useState(false);
+  const [refresh, setRefresh] = useState(0);
+  const quillRef = useRef(null);
+  const [previewImage, setPreviewImage] = useState(null);
+
   const { selectedItem } = useTicketContext();
 
+  // 🧩 Fetch ticket data + comments
   useEffect(() => {
     async function fetchTicket() {
       try {
         setLoading(true);
-        const response = await getTicketById(id);
-
-        const ticketData = response?.data?.data?.[0];
-        console.log("Fetched Ticket Data:", ticketData);
+        const res = await getTicketById(id);
+        const ticketData = res?.data?.data?.[0];
         setTicket(ticketData || null);
       } catch (err) {
-        console.error("Error fetching ticket:", err);
+        console.error("❌ Error fetching ticket:", err);
         setError("Failed to load ticket details");
       } finally {
         setLoading(false);
       }
     }
-
     if (id) fetchTicket();
-  }, [id]);
+  }, [id, refresh]);
 
-  const handleSubmit = () => {
-    console.log("Submitted Message:", message);
-    alert("Message submitted! (See console for content)");
+  const isEditorEmpty = (html) => {
+    const clean = html
+      .replace(/<p><br><\/p>/g, "") // remove empty paragraphs
+      .replace(/<p><\/p>/g, "")
+      .replace(/<br>/g, "")
+      .replace(/<[^>]+>/g, "") // remove all HTML tags
+      .trim();
+
+    return clean.length === 0;
   };
 
-  if (loading) {
+  // 🧩 Submit comment
+  const handleSubmit = async () => {
+    const latestAttachments = [...attachments];
+
+    const turndownService = new TurndownService();
+    const cleanedMessage = message.replace(/<img[^>]*>/g, "");
+    const markdownMessage = turndownService.turndown(cleanedMessage).trim();
+
+    // Rule 1: message only → OK
+    // Rule 2: image + message → OK
+    // Rule 3: image only → button already disabled (never reaches here)
+
+    const payload = {
+      ticket_id: id,
+      is_internal: isPrivate,
+      message: markdownMessage,
+      attachments: latestAttachments,
+    };
+
+    await addComment(payload);
+
+    setMessage("");
+    setAttachments([]);
+    setRefresh(Math.random());
+  };
+
+  const isSubmitDisabled =
+    (attachments.length > 0 && isEditorEmpty(message)) || loading;
+
+  // 🖼️ Upload image (calls both presign + S3 upload)
+  const uploadToS3 = async (file) => {
+    try {
+      const token = localStorage.getItem("jwt_token");
+      // 1️⃣ Get presigned data
+      const presignRes = await axios.post(
+        "http://36.255.71.62:8000/api/v1/tickets/get-presigned-post",
+        { object_name: file.name },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      const data = presignRes.data.data;
+
+      // 2️⃣ Build FormData
+      const formData = new FormData();
+      Object.entries(data.fields).forEach(([key, value]) => {
+        formData.append(key, value);
+      });
+      formData.append("file", file);
+
+      // 3️⃣ Upload using helper
+      await postAttachmentToS3(data.url, formData);
+
+      // 4️⃣ Return uploaded file URL
+      return presignRes.data.public_url;
+    } catch (err) {
+      console.error("❌ Error uploading image:", err);
+      alert("Image upload failed.");
+      return null;
+    }
+  };
+
+  // 🖼️ Custom image handler for multiple files
+  const imageHandler = () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+    input.multiple = true;
+
+    input.onchange = async () => {
+      const files = Array.from(input.files);
+      if (files.length === 0) return;
+      const quill = quillRef.current.getEditor();
+
+      for (const file of files) {
+        const publicUrl = await uploadToS3(file);
+        if (!publicUrl) continue;
+
+        // Insert image into editor
+        const range = quill.getSelection(true);
+        quill.insertEmbed(range.index, "image", publicUrl);
+        quill.insertText(range.index + 1, "\n");
+        quill.setSelection(range.index + 2);
+
+        // Save to attachments
+        setAttachments((prev) => {
+          const updated = [...prev, publicUrl];
+          console.log("Updated attachments:", updated);
+          return updated;
+        });
+      }
+    };
+
+    input.click();
+  };
+
+  const modules = useMemo(
+    () => ({
+      toolbar: {
+        container: [
+          ["bold", "italic"],
+          [{ list: "ordered" }, { list: "bullet" }],
+          ["image", "code-block"],
+        ],
+        handlers: { image: imageHandler },
+      },
+    }),
+    []
+  );
+
+  // 🌀 UI states
+  if (loading)
     return (
       <div className="p-10 text-center text-gray-600">
         <h2 className="text-xl font-semibold">Loading ticket...</h2>
       </div>
     );
-  }
 
-  if (error) {
+  if (error)
     return (
       <div className="p-10 text-center text-red-600">
         <h2 className="text-xl font-semibold">Error</h2>
         <p className="text-sm mt-2">{error}</p>
       </div>
     );
-  }
 
-  if (!ticket) {
+  if (!ticket)
     return (
       <div className="p-10 text-center text-gray-600">
         <h2 className="text-xl font-semibold">Ticket not found</h2>
-        <p className="text-sm mt-2">No ticket with ID {id} exists.</p>
       </div>
     );
-  }
 
-  const CustomFieldModal = () => (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg w-full max-w-4xl mx-4 shadow-xl p-6 relative flex flex-col md:flex-row gap-6">
-        {/* Left side – Form */}
-        <div className="flex-1">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-800">
-              Create custom field
-            </h3>
-            <button
-              onClick={() => setShowCustomFieldModal(false)}
-              className="text-gray-500 hover:text-gray-700 text-xl font-bold"
-            >
-              ×
-            </button>
-          </div>
-
-          {/* Display Name */}
-          <label className="block text-sm text-gray-700 font-medium mb-1">
-            Display name
-          </label>
-          <input
-            type="text"
-            placeholder="Name a custom field, e.g. order number"
-            className="w-full border border-gray-300 rounded px-3 py-2 text-sm mb-3 focus:ring-1 focus:ring-blue-500 focus:outline-none"
-          />
-
-          {/* Type */}
-          <label className="block text-sm text-gray-700 font-medium mb-1">
-            Type
-          </label>
-          <select
-            value={selectedType}
-            onChange={(e) => setSelectedType(e.target.value)}
-            className="w-full border border-gray-300 rounded px-3 py-2 text-sm mb-3 bg-white focus:ring-1 focus:ring-blue-500"
-          >
-            <option value="" disabled hidden>
-              Choose custom field type
-            </option>
-            <option value="single-line">Single-line text</option>
-            <option value="multi-line">Multi-line text</option>
-            <option value="link">Link</option>
-            <option value="date">Date</option>
-          </select>
-
-          {/* Teams with access */}
-          <label className="block text-sm text-gray-700 font-medium mb-1">
-            Teams with access
-          </label>
-          <select className="w-full border border-gray-300 rounded px-3 py-2 text-sm mb-3 bg-white focus:ring-1 focus:ring-blue-500">
-            <option value="">Select who can see custom field values</option>
-            <option value="all">All Teams</option>
-            <option value="admin">Admins only</option>
-            <option value="support">Support Team</option>
-          </select>
-
-          {/* Who can change */}
-          <label className="block text-sm text-gray-700 font-medium mb-2">
-            Who can change the custom field value?
-          </label>
-          <div className="space-y-2 text-sm text-gray-900 mb-3">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="radio"
-                name="field-change-access"
-                value="admin"
-                className="text-blue-600 focus:ring-blue-500"
-              />
-              <span>Admins only</span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="radio"
-                name="field-change-access"
-                value="admin_agent"
-                className="text-blue-600 focus:ring-blue-500"
-              />
-              <span>Admins and agents</span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="radio"
-                name="field-change-access"
-                value="none"
-                className="text-blue-600 focus:ring-blue-500"
-              />
-              <span>No user (API integration)</span>
-            </label>
-          </div>
-
-          {/* API Key Name */}
-          <div className="flex items-center justify-between mt-3 mb-1">
-            <label className="block text-sm text-gray-700 font-medium">
-              API Key name
-            </label>
-            <button
-              type="button"
-              onClick={() => setIsApiKeyEditable((prev) => !prev)}
-              className="text-blue-600 text-xs font-medium hover:underline"
-            >
-              {isApiKeyEditable ? "Lock" : "Edit"}
-            </button>
-          </div>
-          <input
-            type="text"
-            placeholder="Type display name first"
-            disabled={!isApiKeyEditable}
-            className={`w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-blue-500 focus:outline-none ${
-              !isApiKeyEditable ? "bg-gray-100 cursor-not-allowed" : "bg-white"
-            }`}
-          />
-
-          {/* Footer buttons */}
-          <div className="mt-5 flex justify-end gap-2">
-            <button
-              onClick={() => setShowCustomFieldModal(false)}
-              className="px-4 py-2 text-sm text-gray-700 border border-gray-300 rounded hover:bg-gray-100"
-            >
-              Cancel
-            </button>
-            <button className="px-4 py-2 text-sm text-white bg-blue-600 rounded hover:bg-blue-700">
-              Create
-            </button>
-          </div>
-        </div>
-
-        {/* Right side – Preview */}
-        {/* Right side – Preview */}
-        <div className="hidden md:block w-[40%] border-l border-gray-200 pl-6">
-          <h4 className="text-sm font-semibold text-gray-800 mb-2">Preview</h4>
-
-          {/* Preview cards */}
-          <div className="space-y-4">
-            {/* Ticket Info */}
-            <div className="bg-white border rounded-lg p-4 shadow-sm">
-              <h5 className="text-sm font-semibold text-gray-800 mb-3">
-                Ticket info
-              </h5>
-
-              {selectedType === "single-line" && (
-                <div className="space-y-2">
-                  <div className="h-2 w-24 bg-gray-200 rounded"></div>
-                  <div className="h-2 w-32 bg-gray-200 rounded"></div>
-                  <div className="h-2 w-20 bg-blue-500 rounded"></div>
-                </div>
-              )}
-
-              {selectedType === "multi-line" && (
-                <div className="space-y-2">
-                  <div className="h-2 w-28 bg-gray-200 rounded"></div>
-                  <div className="h-2 w-36 bg-gray-200 rounded"></div>
-                  <div className="h-2 w-40 bg-blue-500 rounded"></div>
-                  <div className="h-2 w-32 bg-blue-500 rounded"></div>
-                </div>
-              )}
-
-              {selectedType === "link" && (
-                <div className="space-y-2">
-                  <div className="h-2 w-24 bg-gray-200 rounded"></div>
-                  <div className="h-2 w-32 bg-gray-200 rounded"></div>
-                  <div className="h-2 w-40 bg-blue-500 rounded"></div>
-                </div>
-              )}
-
-              {selectedType === "date" && (
-                <div className="space-y-2">
-                  <div className="h-2 w-20 bg-gray-200 rounded"></div>
-                  <div className="h-2 w-28 bg-gray-200 rounded"></div>
-                  <div className="h-2 w-32 bg-blue-500 rounded"></div>
-                </div>
-              )}
-
-              {!selectedType && (
-                <p className="text-xs text-gray-500">
-                  Choose a custom field type to see a preview here.
-                </p>
-              )}
-            </div>
-
-            {/* Responsibility */}
-            <div className="bg-white border rounded-lg p-4 shadow-sm">
-              <h5 className="text-sm font-semibold text-gray-800 mb-3">
-                Responsibility
-              </h5>
-              <div className="flex items-center gap-3">
-                <div className="h-8 w-8 bg-gray-200 rounded-full"></div>
-                <div className="space-y-2">
-                  <div className="h-2 w-28 bg-gray-200 rounded"></div>
-                  <div className="h-2 w-20 bg-gray-200 rounded"></div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
-  // ✅ Full grid layout
+  // ✅ Render full page
   return (
     <div className="p-6 min-h-screen bg-gray-50">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-        {/* 🎟️ Left Grid (8 columns): Ticket Info */}
+        {/* 🎟️ Left Side */}
         <div className="lg:col-span-8 bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
-          <div className="flex-1 flex flex-col bg-white min-h-screen">
-            {/* 🔹 Header */}
-            <div className="border-b p-4 flex items-center justify-between">
-              <div className="flex items-center gap-3 flex-1">
-                <ChevronLeft
-                  onClick={() => router.push("/tickets")}
-                  className="w-5 h-5 cursor-pointer hover:text-blue-600 transition-colors"
-                />
-                <span className="text-sm text-gray-700 flex-1 font-medium">
-                  {ticket?.title}
-                </span>
-                <Edit2 className="w-4 h-4 text-gray-500 cursor-pointer" />
-              </div>
+          {/* Header */}
+          <div className="border-b p-4 flex items-center justify-between">
+            <div className="flex items-center gap-3 flex-1">
+              <ChevronLeft
+                onClick={() => router.push("/tickets")}
+                className="w-5 h-5 cursor-pointer hover:text-blue-600"
+              />
+              <span className="text-sm text-gray-700 flex-1 font-medium">
+                {ticket?.title}
+              </span>
+              <Edit2 className="w-4 h-4 text-gray-500 cursor-pointer" />
             </div>
+          </div>
 
-            {/* 🔹 Ticket Info Section */}
-            <div className="p-6">
-              {/* Map comments dynamically */}
-              {ticket?.comments?.length > 0 ? (
-                ticket.comments.map((comment, index) => (
-                  <div
-                    key={comment.id || index}
-                    className="border border-gray-300 rounded-lg mb-4 bg-white overflow-hidden"
-                  >
-                    {/* Header */}
-                    <div className="bg-gray-300 px-4 py-2 rounded-t-lg flex items-center justify-between">
-                      <h3 className="text-sm font-semibold text-gray-800 mb-1">
+          {/* Info */}
+          <div className="p-6 border-b text-sm text-gray-700 leading-relaxed">
+            <p>
+              <b>Ticket ID:</b> {ticket.ticket_id}
+            </p>
+            <p>
+              <b>Issued To:</b> {ticket.issued_to}
+            </p>
+            <p>
+              <b>Issued By:</b> {ticket.issuer_number}
+            </p>
+          </div>
+
+          {/* Comments */}
+          <div className="p-6">
+            <h3 className="text-lg font-semibold mb-3">Comments</h3>
+
+            {ticket.comments?.length > 0 ? (
+              ticket.comments.map((comment, i) => (
+                <div
+                  key={comment.id || i}
+                  className="mb-4 border rounded-lg p-4 bg-gray-50"
+                >
+                  <div className="flex justify-between mb-2 items-center">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-gray-800">
                         {comment.commenter_name || "Unknown"}
-                      </h3>
-                      <p className="text-xs text-gray-600">
-                        {(() => {
-                          const created = new Date(comment.created_at);
-                          const diffMs = Date.now() - created.getTime();
-                          const diffMinutes = Math.floor(diffMs / 60000);
-                          const diffHours = Math.floor(diffMs / 3600000);
-                          const diffDays = Math.floor(diffHours / 24);
+                      </span>
 
-                          if (diffMinutes < 1) return "just now";
-                          if (diffMinutes < 60)
-                            return `about ${diffMinutes} minute${
-                              diffMinutes > 1 ? "s" : ""
-                            } ago`;
-                          if (diffHours < 24)
-                            return `about ${diffHours} hour${
-                              diffHours > 1 ? "s" : ""
-                            } ago`;
-                          return `about ${diffDays} day${
-                            diffDays > 1 ? "s" : ""
-                          } ago`;
-                        })()}
-                      </p>
+                      {/* 🔥 INTERNAL / EXTERNAL BADGE */}
+                      <span
+                        className={`text-xs px-2 py-0.5 rounded 
+        ${comment.is_internal ? "bg-blue-600 text-white" : ""}`}
+                      >
+                        {comment.is_internal ? "Internal" : ""}
+                      </span>
                     </div>
 
-                    {/* Body */}
-                    <div className="border-t border-gray-200 px-4 py-3 text-sm text-gray-800 leading-relaxed">
-                      <p>
-                        <span className="font-medium">From:</span>{" "}
-                        <span className="text-gray-800">
-                          appticket@brilliant.com.bd
-                        </span>
-                      </p>
-                      <p className="mb-3">
-                        <span className="font-medium">Reply to:</span>{" "}
-                        <span className="text-gray-800">
-                          ratonsarkar17d06a011@gmail.com
-                        </span>
-                      </p>
-
-                      {/* Message */}
-                      <div className="mt-2 whitespace-pre-line text-gray-800">
-                        You have received a new enquiry from Brilliant FAQ
-                        section:
-                        {"\n\n"}IP Address: 182.48.65.10
-                        {"\n\n"}Name: Raton Sarkar
-                        {"\n"}Email: ratonsarkar17d06a011@gmail.com
-                        {"\n"}Brilliant_Registered_Number: 01927355909
-                        {"\n"}Issue: NID এর ছবি দিতে পারছি না।
-                        {"\n"}gid: 39
-                      </div>
-                    </div>
+                    <span className="text-xs text-gray-500">
+                      {new Date(comment.created_at).toLocaleString()}
+                    </span>
                   </div>
-                ))
-              ) : (
-                <p className="text-gray-500 text-sm italic">
-                  No messages found for this ticket.
-                </p>
-              )}
+
+                  <p className="text-gray-700 whitespace-pre-line">
+                    {comment.message || ""}
+                  </p>
+
+                  {comment.attachments?.length > 0 && (
+                    <div className="mt-3 flex flex-wrap gap-3">
+                      {comment.attachments.map((url, index) => (
+                        <img
+                          key={index}
+                          src={url}
+                          alt={`attachment-${index}`}
+                          onClick={() =>
+                            setPreviewImage(previewImage === url ? null : url)
+                          }
+                          className={`w-40 h-40 object-cover rounded border cursor-pointer transition ${
+                            previewImage === url
+                              ? "scale-105 ring-4 ring-blue-400"
+                              : "hover:opacity-80"
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))
+            ) : (
+              <p className="text-gray-500 italic text-sm">No comments yet.</p>
+            )}
+          </div>
+
+          {/* Add Comment */}
+          <div className="border-t p-6 bg-white">
+            <div className="mb-4 border rounded overflow-hidden">
+              <ReactQuill
+                ref={quillRef}
+                theme="snow"
+                value={message}
+                onChange={setMessage}
+                placeholder="Write your reply..."
+                modules={modules}
+                className="bg-white"
+                style={{ height: "220px", overflowY: "auto" }}
+              />
             </div>
 
-            {/* 📝 Rich Text Editor */}
-            <div className="border-t p-6 bg-white">
-              <div className="mb-4 border rounded overflow-hidden">
-                <ReactQuill
-                  theme="snow"
-                  value={message}
-                  onChange={setMessage}
-                  placeholder="Write your reply here..."
-                  modules={{
-                    toolbar: [
-                      [{ header: [1, 2, false] }],
-                      ["bold", "italic", "underline", "strike"],
-                      [{ list: "ordered" }, { list: "bullet" }],
-                      ["link", "image", "code-block"],
-                      ["clean"],
-                    ],
-                  }}
-                  className="bg-white"
-                  style={{
-                    height: "220px",
-                    maxHeight: "320px",
-                    overflowY: "auto",
-                  }}
+            <div className="flex items-center justify-between mt-4">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={isPrivate}
+                  onChange={(e) => setIsPrivate(e.target.checked)}
+                  className="w-4 h-4"
                 />
-              </div>
+                <span className="text-sm text-gray-700">
+                  {isPrivate ? "Internal Comment" : "External Comment"}
+                </span>
+              </label>
 
-              {/* 🔹 Bottom Controls */}
-              <div className="flex items-center justify-between mt-4">
-                <div className="flex items-center gap-4">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={isPrivate}
-                      onChange={(e) => setIsPrivate(e.target.checked)}
-                      className="w-4 h-4"
-                    />
-                    <span className="text-sm text-gray-700">Private</span>
-                  </label>
-                  <button className="p-2 hover:bg-gray-100 rounded">#</button>
-                  <button className="p-2 hover:bg-gray-100 rounded">📎</button>
-                  <button className="p-2 hover:bg-gray-100 rounded text-blue-600">
-                    A
-                  </button>
-                  <button className="p-2 hover:bg-gray-100 rounded">@</button>
-                </div>
-
-                {/* Status + Submit */}
-                <div className="flex items-center gap-3 relative">
-                  {/* Status Dropdown */}
-                  <div className="relative">
-                    <button
-                      onClick={() => setDropdownOpen((prev) => !prev)}
-                      className="px-4 py-2 border rounded flex items-center gap-2 hover:bg-gray-50 min-w-[120px]"
-                    >
-                      {status}
-                      <ChevronDown className="w-4 h-4" />
-                    </button>
-
-                    {dropdownOpen && (
-                      <div className="absolute right-0 mt-2 w-40 bg-white border border-gray-200 rounded shadow-lg z-50">
-                        {["Open", "Pending", "Resolved", "Closed"].map(
-                          (option) => (
-                            <button
-                              key={option}
-                              onClick={() => {
-                                setStatus(option);
-                                setDropdownOpen(false);
-                              }}
-                              className={`block w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${
-                                status === option
-                                  ? "bg-gray-50 font-semibold"
-                                  : ""
-                              }`}
-                            >
-                              {option}
-                            </button>
-                          )
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Submit */}
-                  <button
-                    onClick={handleSubmit}
-                    className="px-6 py-2 bg-black text-white rounded hover:bg-gray-900"
-                  >
-                    Submit
-                  </button>
-                </div>
-              </div>
+              <button
+                onClick={handleSubmit}
+                disabled={isSubmitDisabled}
+                className={`px-6 py-2 rounded text-white 
+    ${
+      isSubmitDisabled
+        ? "bg-gray-400 cursor-not-allowed"
+        : "bg-black hover:bg-gray-900"
+    }`}
+              >
+                Submit
+              </button>
             </div>
           </div>
         </div>
 
-        {/* 💬 Right Grid (4 columns): DetailsPanel */}
+        {/* Right side */}
         <div className="lg:col-span-4 bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
           <DetailsPanel
             ticket={ticket}
-            onOpenCustomFieldModal={() => setShowCustomFieldModal(true)}
-            onTicketUpdated={() => {
-              // ✅ Update the state immediately
-              setTicket((prev) => ({ ...prev, is_resolved: "True" }));
-            }}
+            onTicketUpdated={() => setRefresh(Math.random())}
           />
         </div>
       </div>
 
-      {showCustomFieldModal && <CustomFieldModal />}
+      {/* 🖼️ Image Preview Overlay */}
+      {previewImage && (
+        <div
+          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center"
+          onClick={() => setPreviewImage(null)}
+        >
+          <img
+            src={previewImage}
+            alt="Preview"
+            className="max-w-[90%] max-h-[90%] rounded-lg shadow-lg border border-white cursor-pointer"
+            onClick={(e) => e.stopPropagation()} // prevent closing when clicking image
+          />
+        </div>
+      )}
     </div>
   );
 }
