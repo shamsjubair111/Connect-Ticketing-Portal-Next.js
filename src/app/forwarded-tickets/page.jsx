@@ -59,7 +59,13 @@ export default function ForwardedTicketsPage() {
 
       {/* Scrollable Table */}
       <div className="flex-1 overflow-y-auto px-6 pb-6">
-        <Table data={tickets} loading={loading} columns={ticketColumns} />
+        <Table
+          data={tickets}
+          loading={loading}
+          columns={ticketColumns}
+          reload={fetchForwardedTickets}
+          page={page}
+        />
       </div>
     </div>
   );

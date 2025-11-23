@@ -137,7 +137,13 @@ export default function TicketsPage() {
       </div>
 
       <div className="flex-1 overflow-y-auto px-6 pb-6">
-        <Table data={tickets} loading={loading} columns={ticketColumns} />
+        <Table
+          data={tickets}
+          loading={loading}
+          columns={ticketColumns}
+          reload={fetchTickets}
+          page={page}
+        />
       </div>
     </div>
   );

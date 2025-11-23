@@ -14,6 +14,10 @@ export default function RootLayout({ children }) {
     "/group-info",
     "/report",
     "/user-info",
+    "/priorities",
+    "/tags",
+    "/trash",
+    "/permanently-deleted",
   ].some((p) => pathname.startsWith(p));
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -27,8 +31,15 @@ export default function RootLayout({ children }) {
           {!isHome && (
             <header className="fixed inset-x-0 top-0 z-50 h-16 bg-white shadow-sm border-b border-gray-200 flex items-center justify-between px-8">
               <div
-                onClick={() => router.push("/tickets")}
-                className="flex items-center gap-3 cursor-pointer"
+                onClick={() => {
+                  if (pathname === "/create-ticket") return; // 🔥 disable click ONLY on create-ticket
+                  router.push("/tickets");
+                }}
+                className={`flex items-center gap-3 ${
+                  pathname === "/create-ticket"
+                    ? "cursor-default"
+                    : "cursor-pointer"
+                }`}
               >
                 <div className="flex h-8 w-8 items-center justify-center rounded bg-gray-100">
                   {/* icon here */}

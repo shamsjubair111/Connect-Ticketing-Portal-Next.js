@@ -12,7 +12,7 @@ export default function MyModal({
   if (!toggle) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
       <div className="bg-white rounded-lg shadow-lg w-full max-w-md mx-4">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-gray-200 px-5 py-3">

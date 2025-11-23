@@ -229,6 +229,32 @@ export default function TicketDetails() {
             </p>
           </div>
 
+          {/* Attachments (From Ticket Details) */}
+          {ticket.attachments?.length > 0 && (
+            <div className="p-6 border-b bg-white">
+              <h3 className="text-lg font-semibold mb-3">Attachments</h3>
+
+              <div className="flex flex-wrap gap-4">
+                {ticket.attachments.map((url, index) => (
+                  <img
+                    key={index}
+                    src={url}
+                    alt={`attachment-${index}`}
+                    onClick={() =>
+                      setPreviewImage(previewImage === url ? null : url)
+                    }
+                    className={`w-40 h-40 object-cover rounded border cursor-pointer transition 
+            ${
+              previewImage === url
+                ? "scale-105 ring-4 ring-blue-400"
+                : "hover:opacity-80"
+            }`}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Comments */}
           <div className="p-6">
             <h3 className="text-lg font-semibold mb-3">Comments</h3>

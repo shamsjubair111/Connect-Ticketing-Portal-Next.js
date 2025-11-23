@@ -33,6 +33,10 @@ export default function TicketSidebar() {
     else if (pathname === "/group-info") setSelectedItem("group");
     else if (pathname === "/report") setSelectedItem("report");
     else if (pathname === "/user-info") setSelectedItem("user");
+    else if (pathname === "/priorities") setSelectedItem("priorities");
+    else if (pathname === "/tags") setSelectedItem("tags");
+    else if (pathname === "/trash") setSelectedItem("trash");
+    else if (pathname === "/permanently-deleted") setSelectedItem("permaTrash");
   }, [pathname, mounted]);
 
   function clearFilterStatus() {
@@ -69,13 +73,13 @@ export default function TicketSidebar() {
         </div>
 
         {/* Search Bar */}
-        <div className="relative">
+        {/* <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             placeholder="Search in all tickets..."
             className="pl-10 bg-white border border-gray-200 text-foreground placeholder:text-muted-foreground"
           />
-        </div>
+        </div> */}
       </div>
 
       {/* Scrollable Middle Content */}
@@ -119,6 +123,36 @@ export default function TicketSidebar() {
             onClick={() => {
               setSelectedItem("report");
               router.push("/report");
+            }}
+          />
+
+          {/* NEW SECTION: PRIORITIES */}
+          <SidebarItem
+            label="Priorities"
+            isActive={mounted && selectedItem === "priorities"}
+            onClick={() => {
+              setSelectedItem("priorities");
+              router.push("/priorities"); // <-- change route if needed
+            }}
+          />
+
+          {/* NEW SECTION: STATUSES */}
+          {/* <SidebarItem
+            label="Statuses"
+            isActive={mounted && selectedItem === "statuses"}
+            onClick={() => {
+              setSelectedItem("statuses");
+              router.push("/statuses"); // <-- change route if needed
+            }}
+          /> */}
+
+          {/* NEW SECTION: TAGS */}
+          <SidebarItem
+            label="Tags"
+            isActive={mounted && selectedItem === "tags"}
+            onClick={() => {
+              setSelectedItem("tags");
+              router.push("/tags"); // <-- change route if needed
             }}
           />
         </div>
@@ -213,7 +247,23 @@ export default function TicketSidebar() {
             Folders
           </h3>
           <div className="space-y-2">
-            <SidebarItem label="Trash" />
+            <SidebarItem
+              label="Trash"
+              isActive={mounted && selectedItem === "trash"}
+              onClick={() => {
+                setSelectedItem("trash");
+                router.push("/trash");
+              }}
+            />
+
+            <SidebarItem
+              label="Permanently Deleted"
+              isActive={mounted && selectedItem === "permaTrash"}
+              onClick={() => {
+                setSelectedItem("permaTrash");
+                router.push("/permanently-deleted");
+              }}
+            />
           </div>
         </div>
       </div>

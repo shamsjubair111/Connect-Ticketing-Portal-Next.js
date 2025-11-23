@@ -2,7 +2,14 @@
 
 import { useState, useRef, useEffect } from "react";
 import { Copy, MoreVertical, Info } from "lucide-react";
-import { forwardTicket, resolveTicket } from "@/api/ticketingApis";
+import {
+  forwardTicket,
+  resolveTicket,
+  changeTicketStatus,
+  getAllPriorities,
+  updatePriority,
+  updateTicketPriority,
+} from "@/api/ticketingApis";
 import { useContext } from "react";
 import { alertContext } from "@/hooks/alertContext";
 import { jwtDecode } from "jwt-decode";
@@ -13,6 +20,8 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import MyModal from "../common/MyModal"; // ✅ Make sure this path is correct
+import AddTagToTicketModal from "@/app/tickets/[id]/AddTagToTicketModal";
+import RemoveTagFromTicketModal from "@/app/tickets/[id]/RemoveTagFromTicketModal";
 // import { forwardTicket, resolveTicket } from "@/api/ticketingApis"; // ✅ Uncomment if API exists
 
 export default function DetailsPanel({
@@ -21,7 +30,7 @@ export default function DetailsPanel({
   onTicketUpdated,
 }) {
   const [status, setStatus] = useState("Open");
-  const [priority, setPriority] = useState("Medium");
+  const [priority, setPriority] = useState("");
   const { setAlertCtx } = useContext(alertContext);
   const [showMenu, setShowMenu] = useState(false);
   const [action, setAction] = useState("");
@@ -32,6 +41,10 @@ export default function DetailsPanel({
   const [loop, setLoop] = useState(false);
   const [cause, setCause] = useState("");
   const [selectedDept, setSelectDept] = useState("");
+  const firstLoad = useRef(true);
+  const [priorities, setPriorities] = useState([]);
+  const [addTagModal, setAddTagModal] = useState(false);
+  const [removeTagData, setRemoveTagData] = useState(null);
 
   const allUsers = [
     { key: "iptsp", value: "IPTSP" },
@@ -44,6 +57,17 @@ export default function DetailsPanel({
 
   const dropdownRef = useRef(null);
 
+  useEffect(() => {
+    // If API returns null, undefined, or empty → show "Select Priority"
+    if (!ticket?.priority) {
+      setPriority("");
+      return;
+    }
+
+    // Otherwise set the actual priority (ex: "High", "Medium")
+    setPriority(ticket.priority?.priority_name);
+  }, [ticket]);
+
   // ✅ Close dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -53,6 +77,39 @@ export default function DetailsPanel({
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    if (!ticket?.ticket_status) return;
+
+    if (!firstLoad.current) return; // ⛔ Prevent re-trigger on refresh from parent
+
+    let apiStatus = ticket.ticket_status;
+
+    let formatted;
+    if (apiStatus === "closed") {
+      formatted = "Solved";
+    } else {
+      formatted = apiStatus
+        .replace("_", " ")
+        .replace(/\b\w/g, (c) => c.toUpperCase());
+    }
+
+    setStatus(formatted);
+    firstLoad.current = false; // ❗ Only run on first mount
+  }, [ticket]);
+
+  useEffect(() => {
+    async function fetchPriorities() {
+      try {
+        const res = await getAllPriorities(); // API call
+        setPriorities(res.data.data); // store array of priorities
+      } catch (err) {
+        console.error("Failed to load priorities", err);
+      }
+    }
+
+    fetchPriorities();
   }, []);
 
   // ✅ Forward handler
@@ -97,6 +154,35 @@ export default function DetailsPanel({
     }
   };
 
+  const handlePriorityChange = async (newPriorityName) => {
+    try {
+      setPriority(newPriorityName); // update UI instantly
+
+      // Find selected priority object
+      const selectedPriority = priorities.find(
+        (p) => p.name === newPriorityName
+      );
+      if (!selectedPriority) return;
+
+      await updateTicketPriority(selectedPriority.id, ticket?.ticket_id);
+
+      setAlertCtx({
+        title: "Success!",
+        message: `Priority updated to ${newPriorityName}`,
+        type: "success",
+      });
+
+      // notify parent to refresh UI
+      onTicketUpdated?.();
+    } catch (err) {
+      console.error("Priority update failed:", err);
+      setAlertCtx({
+        message: err.response?.data?.message || "Failed to update priority",
+        type: "error",
+      });
+    }
+  };
+
   const handleResolve = async () => {
     try {
       setButtonLoader(true);
@@ -123,6 +209,39 @@ export default function DetailsPanel({
       });
     } finally {
       setResolveToggle(false);
+    }
+  };
+
+  const handleStatusChange = async (newStatus) => {
+    try {
+      setStatus(newStatus);
+
+      let apiStatus = newStatus;
+
+      if (newStatus === "Solved") {
+        apiStatus = "closed"; // 🔥 convert UI → API
+      }
+
+      const payload = {
+        ticket_id: ticket.ticket_id,
+        status: apiStatus.toLowerCase().split(" ").join("_"),
+      };
+
+      await changeTicketStatus(payload);
+
+      setAlertCtx({
+        title: "Success!",
+        message: `Status updated to ${newStatus}`,
+        type: "success",
+      });
+
+      onTicketUpdated?.();
+    } catch (err) {
+      console.error(err);
+      setAlertCtx({
+        message: err.response?.data?.message || "Failed to update status",
+        type: "error",
+      });
     }
   };
 
@@ -373,7 +492,7 @@ export default function DetailsPanel({
               <label className="text-sm text-gray-600">Status: </label>
               <select
                 value={status}
-                onChange={(e) => setStatus(e.target.value)}
+                onChange={(e) => handleStatusChange(e.target.value)}
                 className="mt-1 rounded border border-gray-300 bg-white px-2 py-1 text-sm text-gray-900"
               >
                 <option>Open</option>
@@ -386,20 +505,23 @@ export default function DetailsPanel({
               <label className="text-sm text-gray-600">Priority: </label>
               <select
                 value={priority}
-                onChange={(e) => setPriority(e.target.value)}
+                onChange={(e) => handlePriorityChange(e.target.value)}
                 className="mt-1 rounded border border-gray-300 bg-white px-2 py-1 text-sm text-gray-900"
               >
-                <option>Urgent</option>
-                <option>High</option>
-                <option>Medium</option>
-                <option>Low</option>
+                <option value="">Select Priority</option>
+
+                {priorities.map((p) => (
+                  <option key={p.id} value={p.name}>
+                    {p.name}
+                  </option>
+                ))}
               </select>
             </div>
 
-            <div>
+            {/* <div>
               <label className="text-sm text-gray-600">Source:</label>
               <p className="mt-1 text-sm text-gray-900">Email</p>
-            </div>
+            </div> */}
           </AccordionContent>
         </AccordionItem>
 
@@ -408,12 +530,60 @@ export default function DetailsPanel({
           <AccordionTrigger className="py-3 text-base font-semibold text-gray-900 hover:no-underline">
             Tags
           </AccordionTrigger>
-          <AccordionContent className="pb-4 pt-2">
-            <button className="text-sm text-gray-600 hover:text-gray-900">
+
+          <AccordionContent className="pb-4 pt-2 space-y-3">
+            {/* 🔹 TAG LIST DISPLAY */}
+            <div className="flex flex-wrap gap-2">
+              {ticket?.tags?.length > 0 ? (
+                ticket.tags.map((tag) => (
+                  <div
+                    key={tag.tag_id}
+                    className="flex items-center bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm"
+                  >
+                    <span>{tag.tag_name}</span>
+
+                    <button
+                      className="ml-2 text-blue-700 hover:text-red-600 font-bold"
+                      onClick={() =>
+                        setRemoveTagData({
+                          id: tag.tag_id,
+                          name: tag.tag_name,
+                        })
+                      }
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-gray-500 italic">No tags added</p>
+              )}
+            </div>
+
+            {/* 🔹 ADD TAG BUTTON */}
+            <button
+              className="text-sm text-gray-600 hover:text-gray-900"
+              onClick={() => setAddTagModal(true)}
+            >
               + Add tag
             </button>
           </AccordionContent>
         </AccordionItem>
+
+        <AddTagToTicketModal
+          isOpen={addTagModal}
+          onClose={() => setAddTagModal(false)}
+          ticket={ticket}
+          onSuccess={onTicketUpdated}
+        />
+
+        <RemoveTagFromTicketModal
+          isOpen={!!removeTagData}
+          onClose={() => setRemoveTagData(null)}
+          ticket={ticket}
+          tag={removeTagData}
+          onSuccess={onTicketUpdated}
+        />
 
         {/* Custom Fields */}
         {/* <AccordionItem value="custom-fields">

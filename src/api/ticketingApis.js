@@ -141,3 +141,108 @@ export function validateAccessToken(token) {
 export function addComment(data) {
   return execute.post(`${API_BASE_URL}/api/v1/tickets/add-comment`, data);
 }
+
+
+export function changeTicketStatus(data) {
+  return execute.post(`${API_BASE_URL}/api/v1/tickets/change-status`, data);
+}
+
+export function createCustomerTicket(data) {
+  return execute.post(`${API_BASE_URL}/api/v1/tickets/issue-ticket/public`, data);
+}
+
+export function getAllPriorities() {
+  return execute.get(
+    `${API_BASE_URL}/api/v1/priorities/`
+  );
+}
+
+export function createPriority(data) {
+  return execute.post(`${API_BASE_URL}/api/v1/priorities/`, data);
+}
+
+
+export function updatePriority(priorityId, data) {
+  return execute.put(`${API_BASE_URL}/api/v1/priorities/${priorityId}`, data);
+}
+
+export function updateTicketPriority(priorityId, data) {
+  
+  const payload = { priority_id: priorityId};
+  return execute.put(`${API_BASE_URL}/api/v1/priorities/set-priority/${data}`, payload);
+}
+
+export function deletePriority(priorityId) {
+  return execute.delete(`${API_BASE_URL}/api/v1/priorities/${priorityId}`);
+}
+
+
+
+export function getAllTags(page, limit) {
+  return execute.get(
+    `${API_BASE_URL}/api/v1/Tags/?page=${page}&limit=${limit}`
+  );
+}
+
+
+export function createTag(data) {
+  return execute.post(`${API_BASE_URL}/api/v1/Tags/`, data);
+}
+
+
+export function getTagById(tagId) {
+  return execute.get(`${API_BASE_URL}/api/v1/Tags/${tagId}`);
+}
+
+
+export function updateTag(tagId, data) {
+  return execute.put(`${API_BASE_URL}/api/v1/Tags/${tagId}`, data);
+}
+
+
+export function deleteTag(tagId) {
+  return execute.delete(`${API_BASE_URL}/api/v1/Tags/${tagId}`);
+}
+
+
+
+export function addTagToTicket(data) {
+  return execute.post(`${API_BASE_URL}/api/v1/tickets/ticket-tags`, data);
+}
+
+
+export function removeTagFromTicket(data) {
+  return execute.delete(`${API_BASE_URL}/api/v1/tickets/ticket-tags`, {
+    data, 
+  });
+}
+
+
+export function moveTicketToTrash(data) {
+  return execute.post(`${API_BASE_URL}/api/v1/tickets/trash`, data);
+}
+
+
+export function restoreTicketFromTrash(data) {
+  return execute.post(`${API_BASE_URL}/api/v1/tickets/restore-from-trash`, data);
+}
+
+
+export function getTrashTickets(page = 1, params = {}) {
+  return execute.get(`${API_BASE_URL}/api/v1/tickets/trash-tickets/${page}`, { params });
+}
+
+
+export function deleteTicketPermanently(ticketId) {
+  return execute.delete(`${API_BASE_URL}/api/v1/tickets/delete-from-trash/${ticketId}`);
+}
+
+
+export function clearTrash() {
+  return execute.delete(`${API_BASE_URL}/api/v1/tickets/clear-trash`);
+}
+
+
+export function getPermanentlyDeletedTickets(page = 1) {
+  return execute.get(`${API_BASE_URL}/api/v1/tickets/permanently-deleted-tickets/${page}`);
+}
