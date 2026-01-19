@@ -47,8 +47,11 @@ export function getPresignedPost(data) {
   );
 }
 
-export function getForwardedTicket(page) {
-  return execute.get(`${API_BASE_URL}/api/v1/tickets/forward-chain-tickets/${page}`);
+export function getForwardedTicket(page, params = {}) {
+  return execute.get(
+    `${API_BASE_URL}/api/v1/tickets/forward-chain-tickets/${page}`,
+    { params }
+  );
 }
 
 export function forwardTicket(data) {
@@ -135,8 +138,11 @@ export function validateAccessToken(token) {
   const config = {
     headers: { Authorization: "Bearer " + token },
   };
-  return axios.get(`/api/v1/users/validate-token`, config);
-} // <-- Added missing closing brace
+  return axios.get(
+    `${API_BASE_URL}/api/v1/users/validate-token`,
+    config
+  );
+}
 
 export function addComment(data) {
   return execute.post(`${API_BASE_URL}/api/v1/tickets/add-comment`, data);
@@ -246,3 +252,49 @@ export function clearTrash() {
 export function getPermanentlyDeletedTickets(page = 1) {
   return execute.get(`${API_BASE_URL}/api/v1/tickets/permanently-deleted-tickets/${page}`);
 }
+
+export function assignAgentToTicket(payload) {
+  return execute.put(
+    `${API_BASE_URL}/api/v1/tickets/assign-agent`,
+    payload
+  );
+}
+
+export function addFollowersToTicket(payload) {
+  return execute.post(
+    `${API_BASE_URL}/api/v1/tickets/people-in-loop`,
+    payload
+  );
+}
+
+export function getTicketFollowers(ticket_id) {
+  return execute.get(
+    `${API_BASE_URL}/api/v1/tickets/people-in-loop/${ticket_id}`
+  );
+}
+
+export function removeFollower(ticket_id, email) {
+  return execute.delete(
+    `${API_BASE_URL}/api/v1/tickets/people-in-loop`,
+    {
+      data: {
+        ticket_id,
+        emails: [email],
+      },
+    }
+  );
+}
+
+export function getAssignedAgent(ticket_id) {
+  return execute.get(
+    `${API_BASE_URL}/api/v1/tickets/assigned-agent/${ticket_id}`
+  );
+}
+
+export function unassignAgent(ticket_id) {
+   return execute.delete(`${API_BASE_URL}/api/v1/tickets/remove-agent`, {
+    data: { ticket_id },
+  });
+}
+
+

@@ -68,15 +68,17 @@ export default function TicketsPage() {
     try {
       const res = await getTicketsByPage(
         pageNo,
-        params.selectedTab || "", // ❗ ONLY Ticket Type filter
+        params.selectedTab || "",
         params.selectedGroupId || "",
         params.ticketIdForMyTicket || "",
         params.issueForMyTicket || "",
         params.selectedSubGroupId || "",
-        params.statusForMyTicket || selectedStatus || "",
+        selectedStatus === "to_handle"
+          ? "open,in_progress"
+          : params.statusForMyTicket || selectedStatus || "",
         params.pNumberForMyTicket || "",
         params.startDate || "",
-        params.endDate || ""
+        params.endDate || "",
       );
 
       setTickets(res.data.data);
@@ -119,12 +121,12 @@ export default function TicketsPage() {
             {selectedItem === "forwarded"
               ? "Forwarded Tickets"
               : selectedItem === "group"
-              ? "Group Tickets"
-              : selectedItem === "user"
-              ? "User Tickets"
-              : selectedItem === "report"
-              ? "Reports"
-              : "All Recent Tickets"}
+                ? "Group Tickets"
+                : selectedItem === "user"
+                  ? "User Tickets"
+                  : selectedItem === "report"
+                    ? "Reports"
+                    : "All Recent Tickets"}
           </h3>
         </div>
 

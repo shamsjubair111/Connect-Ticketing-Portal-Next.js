@@ -3,6 +3,7 @@
 import { Plus, Search, Info } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import { jwtDecode } from "jwt-decode";
 import {
   Tooltip,
   TooltipContent,
@@ -19,9 +20,26 @@ export default function TicketSidebar() {
   const router = useRouter();
   const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
+  const [userType, setUserType] = useState("");
+  const [role, setRole] = useState("");
+
+  const isTicketsPage = pathname === "/tickets";
 
   useEffect(() => {
     setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    try {
+      const token = localStorage.getItem("jwt_token");
+      if (token) {
+        const decoded = jwtDecode(token);
+        setUserType(decoded.user_type);
+        setRole(decoded.role);
+      }
+    } catch (e) {
+      console.log(e);
+    }
   }, []);
 
   // ✅ Apply selectedItem only after mount (client side)
@@ -163,13 +181,20 @@ export default function TicketSidebar() {
             All recent tickets
           </h2>
           <div className="space-y-2">
-            <SidebarItem label="Tickets to handle" />
-            <SidebarItem label="My open tickets" />
+            <SidebarItem
+              label="Tickets to handle"
+              isActive={selectedStatus === "to_handle"}
+              onClick={() => {
+                clearFilterStatus();
+                setSelectedStatus("to_handle");
+              }}
+            />
+            {/* <SidebarItem label="My open tickets" /> */}
           </div>
         </div>
 
         {/* Ticket Views */}
-        <div className="p-4 border-b border-border">
+        {/* <div className="p-4 border-b border-border">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-muted-foreground font-semibold text-xs uppercase tracking-wide">
               Ticket Views
@@ -182,64 +207,82 @@ export default function TicketSidebar() {
             </a>
           </div>
           <SidebarItem label="My tickets in last 7 days" />
-        </div>
+        </div> */}
 
         {/* Statuses */}
-        <div className="p-4 border-b border-border">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-muted-foreground font-semibold text-xs uppercase tracking-wide">
-              Statuses
-            </h3>
+        {/* Statuses */}
+        {isTicketsPage ? (
+          <div className="p-4 border-b border-border">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-muted-foreground font-semibold text-xs uppercase tracking-wide">
+                Statuses
+              </h3>
 
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Info className="w-4 h-4 text-muted-foreground cursor-pointer" />
-                </TooltipTrigger>
-                <TooltipContent
-                  side="top"
-                  className="bg-slate-800 text-white text-xs rounded px-2 py-1 shadow-md"
-                >
-                  <p>Statuses help you stay up to date with your tickets.</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info className="w-4 h-4 text-muted-foreground cursor-pointer" />
+                  </TooltipTrigger>
+                  <TooltipContent
+                    side="top"
+                    className="bg-slate-800 text-white text-xs rounded px-2 py-1 shadow-md"
+                  >
+                    <p>Statuses help you stay up to date with your tickets.</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+            <div className="space-y-2">
+              <SidebarItem
+                label="All"
+                isActive={!selectedStatus}
+                onClick={() => {
+                  clearFilterStatus();
+                  setSelectedStatus("");
+                }}
+              />
+              <SidebarItem
+                label="Open"
+                isActive={selectedStatus === "open"}
+                onClick={() => {
+                  clearFilterStatus();
+                  setSelectedStatus("open");
+                }}
+              />
+              <SidebarItem
+                label="In Progress"
+                isActive={selectedStatus === "in_progress"}
+                onClick={() => {
+                  clearFilterStatus();
+                  setSelectedStatus("in_progress");
+                }}
+              />
+              <SidebarItem
+                label="Solved"
+                isActive={selectedStatus === "closed"}
+                onClick={() => {
+                  clearFilterStatus();
+                  setSelectedStatus("closed");
+                }}
+              />
+            </div>
           </div>
-          <div className="space-y-2">
-            <SidebarItem
-              label="All"
-              isActive={!selectedStatus} // ✅ active when no status selected
-              onClick={() => {
-                clearFilterStatus(); // ✅ remove any saved filters
-                setSelectedStatus(""); // ✅ reset to show all
-              }}
-            />
-            <SidebarItem
-              label="Open"
-              isActive={selectedStatus === "open"}
-              onClick={() => {
-                clearFilterStatus(); // ✅ clears any active Status filter
-                setSelectedStatus("open");
-              }}
-            />
-            <SidebarItem
-              label="In Progress"
-              isActive={selectedStatus === "in_progress"}
-              onClick={() => {
-                clearFilterStatus();
-                setSelectedStatus("in_progress");
-              }}
-            />
-            <SidebarItem
-              label="Solved"
-              isActive={selectedStatus === "closed"}
-              onClick={() => {
-                clearFilterStatus();
-                setSelectedStatus("closed");
-              }}
-            />
+        ) : (
+          <div className="p-4 border-b border-border opacity-40 pointer-events-none">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-muted-foreground font-semibold text-xs uppercase tracking-wide">
+                Statuses
+              </h3>
+              <Info className="w-4 h-4 text-muted-foreground" />
+            </div>
+            <div className="space-y-2">
+              <SidebarItem label="All" />
+              <SidebarItem label="Open" />
+              <SidebarItem label="In Progress" />
+              <SidebarItem label="Solved" />
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Folders */}
         <div className="p-4">

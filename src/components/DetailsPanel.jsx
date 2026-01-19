@@ -2,6 +2,12 @@
 
 import { useState, useRef, useEffect } from "react";
 import { Copy, MoreVertical, Info } from "lucide-react";
+import { X } from "lucide-react";
+import {
+  getAssignedAgent,
+  removeFollower,
+  unassignAgent,
+} from "@/api/ticketingApis";
 import {
   forwardTicket,
   resolveTicket,
@@ -22,6 +28,10 @@ import {
 import MyModal from "../common/MyModal"; // ✅ Make sure this path is correct
 import AddTagToTicketModal from "@/app/tickets/[id]/AddTagToTicketModal";
 import RemoveTagFromTicketModal from "@/app/tickets/[id]/RemoveTagFromTicketModal";
+import AssignAgentModal from "@/app/tickets/[id]/AssignAgentModal";
+import AddFollowersModal from "@/app/tickets/[id]/AddFollowersModal";
+import { getTicketFollowers } from "@/api/ticketingApis";
+
 // import { forwardTicket, resolveTicket } from "@/api/ticketingApis"; // ✅ Uncomment if API exists
 
 export default function DetailsPanel({
@@ -45,6 +55,10 @@ export default function DetailsPanel({
   const [priorities, setPriorities] = useState([]);
   const [addTagModal, setAddTagModal] = useState(false);
   const [removeTagData, setRemoveTagData] = useState(null);
+  const [assignAgentModal, setAssignAgentModal] = useState(false);
+  const [followersModal, setFollowersModal] = useState(false);
+  const [followers, setFollowers] = useState([]);
+  const [assignedAgent, setAssignedAgent] = useState(null);
 
   const allUsers = [
     { key: "iptsp", value: "IPTSP" },
@@ -56,6 +70,44 @@ export default function DetailsPanel({
   const userType = jwtDecode(localStorage.getItem("jwt_token")).user_type;
 
   const dropdownRef = useRef(null);
+
+  const getInitials = (name) => {
+    const safeName = String(name || "").trim();
+    if (!safeName) return "";
+    return safeName
+      .split(/\s+/)
+      .map((w) => w[0]?.toUpperCase())
+      .join("")
+      .slice(0, 3);
+  };
+
+  const loadFollowers = async () => {
+    try {
+      const res = await getTicketFollowers(ticket.ticket_id);
+      const people = res?.data?.people_in_loop || [];
+      setFollowers(Array.isArray(people) ? people : []);
+    } catch (err) {
+      console.error("Failed to load followers", err);
+      setFollowers([]);
+    }
+  };
+
+  useEffect(() => {
+    async function loadAssignedAgent() {
+      try {
+        const res = await getAssignedAgent(ticket.ticket_id);
+        setAssignedAgent(res?.data || null);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    if (ticket?.ticket_id) loadAssignedAgent();
+  }, [ticket?.ticket_id]);
+
+  useEffect(() => {
+    if (ticket?.ticket_id) loadFollowers();
+  }, [ticket?.ticket_id]);
 
   useEffect(() => {
     // If API returns null, undefined, or empty → show "Select Priority"
@@ -154,13 +206,33 @@ export default function DetailsPanel({
     }
   };
 
+  const handleRemoveAgent = async () => {
+    try {
+      await unassignAgent(ticket.ticket_id);
+
+      setAssignedAgent(null);
+
+      setAlertCtx({
+        title: "Success!",
+        message: "Agent removed successfully",
+        type: "success",
+      });
+    } catch (err) {
+      setAlertCtx({
+        title: "Error",
+        message: err.response?.data?.message || "Failed to remove agent",
+        type: "error",
+      });
+    }
+  };
+
   const handlePriorityChange = async (newPriorityName) => {
     try {
       setPriority(newPriorityName); // update UI instantly
 
       // Find selected priority object
       const selectedPriority = priorities.find(
-        (p) => p.name === newPriorityName
+        (p) => p.name === newPriorityName,
       );
       if (!selectedPriority) return;
 
@@ -209,6 +281,24 @@ export default function DetailsPanel({
       });
     } finally {
       setResolveToggle(false);
+    }
+  };
+
+  const handleRemoveFollower = async (email) => {
+    try {
+      await removeFollower(ticket.ticket_id, email);
+      setFollowers((prev) => prev.filter((e) => e !== email));
+      setAlertCtx({
+        title: "Success!",
+        message: "Follower removed",
+        type: "success",
+      });
+    } catch (err) {
+      setAlertCtx({
+        title: "Error",
+        message: err.response?.data?.message || "Failed to remove follower",
+        type: "error",
+      });
     }
   };
 
@@ -475,7 +565,7 @@ export default function DetailsPanel({
                     {ticket.comments[ticket.comments.length - 1].commenter_name}{" "}
                     on{" "}
                     {new Date(
-                      ticket.comments[ticket.comments.length - 1].created_at
+                      ticket.comments[ticket.comments.length - 1].created_at,
                     ).toLocaleDateString("en-GB", {
                       day: "2-digit",
                       month: "short",
@@ -585,6 +675,20 @@ export default function DetailsPanel({
           onSuccess={onTicketUpdated}
         />
 
+        <AssignAgentModal
+          isOpen={assignAgentModal}
+          onClose={() => setAssignAgentModal(false)}
+          ticket={ticket}
+          onSuccess={onTicketUpdated}
+        />
+
+        <AddFollowersModal
+          isOpen={followersModal}
+          onClose={() => setFollowersModal(false)}
+          ticket={ticket}
+          onSuccess={onTicketUpdated}
+        />
+
         {/* Custom Fields */}
         {/* <AccordionItem value="custom-fields">
           <AccordionTrigger className="py-3 text-base font-semibold text-gray-900 hover:no-underline">
@@ -615,60 +719,104 @@ export default function DetailsPanel({
           <AccordionContent className="pb-4 pt-2 space-y-4">
             <div>
               <div className="flex items-center justify-between">
-                <p className="text-sm font-semibold text-gray-900">Team</p>
-                <button className="text-xs text-blue-600 hover:text-blue-700 font-medium cursor-pointer">
-                  Change
-                </button>
+                <p className="text-sm font-semibold text-gray-900">Group</p>
               </div>
-              <div className="flex items-center gap-3 mt-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded bg-purple-500 text-xs font-bold text-white">
-                  1R
+              {ticket?.group_name ? (
+                <div className="flex items-center gap-3 mt-2">
+                  <div className="flex h-8 w-8 items-center justify-center rounded bg-purple-500 text-xs font-bold text-white">
+                    {getInitials(ticket?.group_name)}
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">
+                      {ticket?.group_name}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-900">
-                    101 Restricted
-                  </p>
-                  <p className="text-xs text-gray-600">
-                    1481504077@tickets.helpdesk.com
-                  </p>
-                </div>
-              </div>
+              ) : (
+                <p className="text-xs text-gray-600">No group</p>
+              )}
             </div>
 
             <div>
               <div className="flex items-center justify-between">
                 <p className="text-sm font-semibold text-gray-900">Agent</p>
                 <div className="flex items-center gap-2 text-xs">
-                  <button className="text-blue-600 hover:text-blue-700 font-medium cursor-pointer">
-                    Assign me
-                  </button>
-                  <button className="text-blue-600 hover:text-blue-700 font-medium cursor-pointer">
+                  <button
+                    className="text-blue-600 hover:text-blue-700 font-medium cursor-pointer"
+                    onClick={() => setAssignAgentModal(true)}
+                  >
                     Assign
                   </button>
                 </div>
               </div>
-              <p className="text-xs text-gray-600 mt-1">
-                No agent assigned to this ticket.
-              </p>
+              {assignedAgent?.assigned_agent?.agent_id ? (
+                <div className="flex items-center gap-3 mt-2">
+                  <div className="h-8 w-8 rounded-full bg-purple-500 text-white flex items-center justify-center font-semibold text-sm">
+                    {getInitials(assignedAgent?.assigned_agent?.agent_name)}
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">
+                        {assignedAgent?.assigned_agent?.agent_name}
+                      </p>
+                    </div>
+
+                    <button
+                      onClick={handleRemoveAgent}
+                      className="text-red-600 hover:text-red-800"
+                      style={{ cursor: "pointer" }}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-xs text-gray-600 mt-1">
+                  No agent assigned to this ticket.
+                </p>
+              )}
             </div>
 
             <div>
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-semibold text-gray-900">
-                  Followers <span className="text-gray-600">(0)</span>
-                </p>
-                <div className="flex items-center gap-2 text-xs">
-                  {/* <button className="text-blue-600 hover:text-blue-700 font-medium cursor-pointer">
-                    Follow
-                  </button> */}
-                  <button className="text-blue-600 hover:text-blue-700 font-medium cursor-pointer">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-semibold text-gray-900">
+                    People in loop
+                  </p>
+                  <button
+                    className="text-blue-600 hover:text-blue-700 font-medium"
+                    onClick={() => setFollowersModal(true)}
+                    style={{ cursor: "pointer" }}
+                  >
                     Edit
                   </button>
                 </div>
+
+                {followers.length === 0 ? (
+                  <p className="text-xs text-gray-600">
+                    No followers added yet.
+                  </p>
+                ) : (
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {followers.map((email) => (
+                      <span
+                        key={email}
+                        className="flex items-center gap-2 px-2 py-1 rounded bg-gray-100 text-xs text-gray-800"
+                      >
+                        {email}
+                        <button
+                          style={{ cursor: "pointer" }}
+                          onClick={() => handleRemoveFollower(email)}
+                          className="hover:text-red-600"
+                        >
+                          <X size={14} />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
-              <p className="text-xs text-gray-600 mt-1">
-                No followers assigned to this ticket.
-              </p>
             </div>
           </AccordionContent>
         </AccordionItem>

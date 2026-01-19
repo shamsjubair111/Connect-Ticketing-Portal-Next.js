@@ -5,41 +5,75 @@ import Table from "@/components/shared/Table";
 import Pagination from "@/components/shared/Pagination";
 import { getForwardedTicket } from "@/api/ticketingApis";
 import { ticketColumns } from "@/utils/tableColumns";
+import Filter from "@/components/shared/Filter";
 
 export default function ForwardedTicketsPage() {
   const [tickets, setTickets] = useState([]);
   const [totalTickets, setTotalTickets] = useState(0);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
+  const [filters, setFilters] = useState([]);
 
   // Fetch forwarded tickets
   const fetchForwardedTickets = async (pageNo) => {
     try {
       setLoading(true);
-      const res = await getForwardedTicket(pageNo);
 
-      // API returns shape: { data, total_tickets, total_pages, ... }
+      const params = buildParams(filters);
+      const res = await getForwardedTicket(pageNo, params);
+
       setTickets(res?.data?.data || []);
       setTotalTickets(res?.data?.total_tickets || 0);
     } catch (err) {
-      console.error("Error fetching forwarded tickets:", err);
+      console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
-  // Initial + page change
   useEffect(() => {
     fetchForwardedTickets(page);
-  }, [page]);
+  }, [page, filters]);
 
-  // Optional: auto-refresh every 30s
-  useEffect(() => {
-    const interval = setInterval(() => {
-      fetchForwardedTickets(page);
-    }, 30000);
-    return () => clearInterval(interval);
-  }, [page]);
+  const buildParams = (filters) => {
+    const params = {};
+
+    filters.forEach((f) => {
+      if (!f.value) return;
+
+      switch (f.label) {
+        case "Ticket Id":
+          params.ticket_id = f.value;
+          break;
+        case "Problematic Number":
+          params.problematic_number = f.value;
+          break;
+        case "Status":
+          params.status = f.value;
+          break;
+        case "Issued To":
+          params.issued_to = f.value;
+          break;
+        case "Ticket Type":
+          params.ticket_type = f.value;
+          break;
+        case "Group":
+          params.group_id = f.value;
+          break;
+        case "Subgroup":
+          params.sub_group_id = f.value;
+          break;
+        case "Start Date":
+          params.start_date = f.value;
+          break;
+        case "End Date":
+          params.end_date = f.value;
+          break;
+      }
+    });
+
+    return params;
+  };
 
   return (
     <div className="flex flex-col h-full">
@@ -48,6 +82,8 @@ export default function ForwardedTicketsPage() {
         <div className="border border-gray-200 rounded-sm bg-white flex items-center h-[52px] px-5 w-full mb-4">
           <h3 className="font-bold text-[18px]">Forwarded Tickets</h3>
         </div>
+
+        <Filter onFilterChange={setFilters} />
 
         {/* Pagination at top */}
         <Pagination
@@ -63,7 +99,7 @@ export default function ForwardedTicketsPage() {
           data={tickets}
           loading={loading}
           columns={ticketColumns}
-          reload={fetchForwardedTickets}
+          reload={() => fetchForwardedTickets(page)}
           page={page}
         />
       </div>

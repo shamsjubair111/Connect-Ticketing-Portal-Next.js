@@ -21,6 +21,8 @@ export default function CreateTicketPage() {
   const [buttonLoader, setButtonLoader] = useState(false);
   const { setAlertCtx } = useContext(alertContext);
   const router = useRouter();
+  const [requesterName, setRequesterName] = useState("");
+  const [requesterEmail, setRequesterEmail] = useState("");
 
   const [userType, setUserType] = useState("agent");
   const [userTypeValidation, setUserTypeValidation] = useState(null);
@@ -93,6 +95,8 @@ export default function CreateTicketPage() {
     setTitle("");
     setPNumber("");
     setDesc("");
+    setRequesterName("");
+    setRequesterEmail("");
     setSelectedGroup("");
     setSelectedSubgroup("");
     setSelectedFiles([]);
@@ -108,6 +112,8 @@ export default function CreateTicketPage() {
       sub_group_id: selectedSubgroup?._id,
       sub_group_name: selectedSubgroup?.sub_group_bn,
       issuer_user_type: userType,
+      ...(requesterName && { requester_name: requesterName }),
+      ...(requesterEmail && { requester_email: requesterEmail }),
       ...(!!_attachments && { attachments: _attachments }),
     };
 
@@ -226,6 +232,32 @@ export default function CreateTicketPage() {
               addon="+88"
               placeholder="01XXXXXXXXX"
               onChange={(e) => setPNumber(e.target.value)}
+              className="mt-2"
+            />
+          </div>
+
+          {/* Requester Name */}
+          <div className="mb-6">
+            <Label htmlFor="requesterName" value="Name" />
+            <TextInput
+              id="requesterName"
+              type="text"
+              placeholder="Enter name"
+              value={requesterName}
+              onChange={(e) => setRequesterName(e.target.value)}
+              className="mt-2"
+            />
+          </div>
+
+          {/* Requester Email */}
+          <div className="mb-6">
+            <Label htmlFor="requesterEmail" value="Email" />
+            <TextInput
+              id="requesterEmail"
+              type="email"
+              placeholder="Enter email"
+              value={requesterEmail}
+              onChange={(e) => setRequesterEmail(e.target.value)}
               className="mt-2"
             />
           </div>
