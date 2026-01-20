@@ -108,7 +108,7 @@ export default function TicketsPage() {
   useEffect(() => {
     const debounce = setTimeout(() => {
       fetchTickets(page);
-    }, 600); // 0.6s debounce for smoother UX
+    }, 100); // 0.6s debounce for smoother UX
 
     return () => clearTimeout(debounce);
   }, [page, filters, selectedItem, selectedStatus]); // ✅ added selectedItem dependency

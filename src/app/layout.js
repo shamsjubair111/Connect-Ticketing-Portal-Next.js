@@ -2,8 +2,8 @@ import "./globals.css";
 import ClientLayout from "./ClientLayout"; // ✅ import client wrapper
 
 export const metadata = {
-  title: "Connect Ticket Portal",
-  description: "Ticket Management System by Jubair",
+  title: "Brilliant Connect Ticketing",
+  description: "Ticket Management System by Intercloud Ltd.",
 };
 
 export default function RootLayout({ children }) {

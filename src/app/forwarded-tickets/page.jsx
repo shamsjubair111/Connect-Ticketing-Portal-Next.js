@@ -83,7 +83,7 @@ export default function ForwardedTicketsPage() {
           <h3 className="font-bold text-[18px]">Forwarded Tickets</h3>
         </div>
 
-        <Filter onFilterChange={setFilters} />
+        {/* <Filter onFilterChange={setFilters} /> */}
 
         {/* Pagination at top */}
         <Pagination

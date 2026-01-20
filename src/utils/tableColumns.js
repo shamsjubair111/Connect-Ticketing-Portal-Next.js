@@ -34,7 +34,7 @@ export const ticketColumns = [
     value: "group_name",
     render: (row) => (
       <span className="text-sm text-gray-700">
-        {row?.group_name || "Unassigned"}
+        {row?.agent?.agent_name || "Unassigned"}
       </span>
     ),
   },

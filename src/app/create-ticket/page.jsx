@@ -29,6 +29,8 @@ export default function CreateCustomerTicketPage() {
   const [isSuccess, setIsSuccess] = useState(false);
   const [errorText, setErrorText] = useState("");
   const [emailError, setEmailError] = useState("");
+  const [requesterName, setRequesterName] = useState("");
+  const [requesterEmail, setRequesterEmail] = useState("");
 
   const recaptchaRef = useRef(null);
   const [captchaToken, setCaptchaToken] = useState("");
@@ -43,8 +45,8 @@ export default function CreateCustomerTicketPage() {
       .catch((err) =>
         setErrorText(
           err?.response?.data?.message ||
-            "Sorry, something went wrong. Please refresh."
-        )
+            "Sorry, something went wrong. Please refresh.",
+        ),
       );
   }, []);
 
@@ -57,8 +59,8 @@ export default function CreateCustomerTicketPage() {
       .catch((err) =>
         setErrorText(
           err?.response?.data?.message ||
-            "Failed to load subgroups. Please try again."
-        )
+            "Failed to load subgroups. Please try again.",
+        ),
       );
   };
 
@@ -131,7 +133,7 @@ export default function CreateCustomerTicketPage() {
         setButtonLoader(false);
         setErrorText(
           err?.response?.data?.message ||
-            "Sorry, something went wrong. Please try again."
+            "Sorry, something went wrong. Please try again.",
         );
       });
   };

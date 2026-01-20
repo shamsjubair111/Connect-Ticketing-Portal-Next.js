@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Plus, X } from "lucide-react";
 import { getAllGroups, getSubGroups } from "@/api/ticketingApis";
+import { jwtDecode } from "jwt-decode";
 
 const Filter = ({ onFilterChange }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -10,6 +11,35 @@ const Filter = ({ onFilterChange }) => {
   const [groups, setGroups] = useState([]);
   const [subgroups, setSubgroups] = useState([]);
   const [selectedGroupId, setSelectedGroupId] = useState(null);
+  const [userType, setUserType] = useState("");
+
+  function useDebounce(value, delay) {
+    const [debouncedValue, setDebouncedValue] = useState(value);
+
+    useEffect(() => {
+      const handler = setTimeout(() => {
+        setDebouncedValue(value);
+      }, delay);
+
+      return () => clearTimeout(handler);
+    }, [value, delay]);
+
+    return debouncedValue;
+  }
+
+  const debouncedFilters = useDebounce(selectedFilters, 500);
+
+  useEffect(() => {
+    const token = localStorage.getItem("jwt_token");
+    if (!token) return;
+
+    try {
+      const decoded = jwtDecode(token);
+      setUserType(decoded.user_type);
+    } catch (err) {
+      console.log(Error);
+    }
+  }, []);
 
   // ✅ Load saved filters when Filter component mounts
   useEffect(() => {
@@ -50,7 +80,7 @@ const Filter = ({ onFilterChange }) => {
     return () => window.removeEventListener("storage", handleStorageChange);
   }, []);
 
-  const filterOptions = [
+  const allFilterOptions = [
     { id: 1, label: "Ticket Id", type: "text" },
     { id: 2, label: "Problematic Number", type: "text" },
     {
@@ -63,19 +93,26 @@ const Filter = ({ onFilterChange }) => {
       id: 4,
       label: "Issued To",
       type: "select",
-      options: ["cc", "customer", "iptsp"],
+      options: ["cc", "rs", "oss-bss", "iptsp"],
     },
     {
       id: 5,
       label: "Ticket Type",
       type: "select",
-      options: ["all", "agent", "customer"],
+      options: ["agent", "customer", "pbx_user"],
     },
     { id: 6, label: "Group", type: "select", options: [] },
     { id: 7, label: "Subgroup", type: "select", options: [] },
     { id: 8, label: "Start Date", type: "date" },
     { id: 9, label: "End Date", type: "date" },
   ];
+
+  const filterOptions =
+    userType === "customer" || userType === "pbx_user"
+      ? allFilterOptions.filter((opt) =>
+          ["Ticket Id", "Problematic Number", "Status"].includes(opt.label),
+        )
+      : allFilterOptions;
 
   // ✅ Fetch groups on mount
   useEffect(() => {
@@ -85,8 +122,8 @@ const Filter = ({ onFilterChange }) => {
         const list = Array.isArray(res?.data?.data)
           ? res.data.data
           : Array.isArray(res?.data)
-          ? res.data
-          : [];
+            ? res.data
+            : [];
         setGroups(list);
       } catch (err) {
         console.error("Error fetching groups:", err);
@@ -106,10 +143,10 @@ const Filter = ({ onFilterChange }) => {
         const list = Array.isArray(res?.data?.sub_groups)
           ? res.data.sub_groups
           : Array.isArray(res?.data?.data)
-          ? res.data.data
-          : Array.isArray(res?.data)
-          ? res.data
-          : [];
+            ? res.data.data
+            : Array.isArray(res?.data)
+              ? res.data
+              : [];
 
         if (isMounted) setSubgroups(list);
       } catch (err) {
@@ -126,13 +163,11 @@ const Filter = ({ onFilterChange }) => {
 
   // ✅ Notify parent + persist filters
   useEffect(() => {
-    if (onFilterChange) onFilterChange(selectedFilters);
-
-    // Prevent overwriting localStorage if filters are still loading
-    if (selectedFilters.length > 0) {
-      localStorage.setItem("ticket_filters", JSON.stringify(selectedFilters));
+    if (onFilterChange) onFilterChange(debouncedFilters);
+    if (debouncedFilters.length > 0) {
+      localStorage.setItem("ticket_filters", JSON.stringify(debouncedFilters));
     }
-  }, [selectedFilters, onFilterChange]);
+  }, [debouncedFilters, onFilterChange]);
 
   // 🧩 Add filter
   const handleSelect = (option) => {

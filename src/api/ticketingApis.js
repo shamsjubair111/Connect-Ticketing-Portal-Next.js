@@ -297,4 +297,6 @@ export function unassignAgent(ticket_id) {
   });
 }
 
-
+export function issueTicketWithoutProblematicNumber(data) {
+  return execute.post(`${API_BASE_URL}/api/v1/tickets/issue-ticket/without-problematic-number`, data);
+}

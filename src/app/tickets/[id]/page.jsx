@@ -6,10 +6,11 @@ import { ChevronLeft, Edit2 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useRef, useState } from "react";
 import TurndownService from "turndown";
-import axios from "axios";
+import { jwtDecode } from "jwt-decode";
 import {
   getTicketById,
   addComment,
+  getPresignedPost,
   postAttachmentToS3,
 } from "@/api/ticketingApis";
 import { useTicketContext } from "@/context/TicketContext";
@@ -29,8 +30,22 @@ export default function TicketDetails() {
   const [refresh, setRefresh] = useState(0);
   const quillRef = useRef(null);
   const [previewImage, setPreviewImage] = useState(null);
+  const [userType, setUserType] = useState("");
 
   const { selectedItem } = useTicketContext();
+
+  // Get user type from JWT
+  useEffect(() => {
+    const token = localStorage.getItem("jwt_token");
+    if (!token) return;
+
+    try {
+      const decoded = jwtDecode(token);
+      setUserType(decoded?.user_type);
+    } catch (err) {
+      console.error("Error decoding token:", err);
+    }
+  }, []);
 
   // 🧩 Fetch ticket data + comments
   useEffect(() => {
@@ -50,12 +65,13 @@ export default function TicketDetails() {
     if (id) fetchTicket();
   }, [id, refresh]);
 
+  // Check if editor is empty
   const isEditorEmpty = (html) => {
     const clean = html
-      .replace(/<p><br><\/p>/g, "") // remove empty paragraphs
+      .replace(/<p><br><\/p>/g, "")
       .replace(/<p><\/p>/g, "")
       .replace(/<br>/g, "")
-      .replace(/<[^>]+>/g, "") // remove all HTML tags
+      .replace(/<[^>]+>/g, "")
       .trim();
 
     return clean.length === 0;
@@ -63,48 +79,41 @@ export default function TicketDetails() {
 
   // 🧩 Submit comment
   const handleSubmit = async () => {
-    const latestAttachments = [...attachments];
+    try {
+      const latestAttachments = [...attachments];
 
-    const turndownService = new TurndownService();
-    const cleanedMessage = message.replace(/<img[^>]*>/g, "");
-    const markdownMessage = turndownService.turndown(cleanedMessage).trim();
+      const turndownService = new TurndownService();
+      const cleanedMessage = message.replace(/<img[^>]*>/g, "");
+      const markdownMessage = turndownService.turndown(cleanedMessage).trim();
 
-    // Rule 1: message only → OK
-    // Rule 2: image + message → OK
-    // Rule 3: image only → button already disabled (never reaches here)
+      const payload = {
+        ticket_id: id,
+        is_internal: userType === "agent" ? false : isPrivate,
+        message: markdownMessage,
+        attachments: latestAttachments,
+      };
 
-    const payload = {
-      ticket_id: id,
-      is_internal: isPrivate,
-      message: markdownMessage,
-      attachments: latestAttachments,
-    };
+      await addComment(payload);
 
-    await addComment(payload);
-
-    setMessage("");
-    setAttachments([]);
-    setRefresh(Math.random());
+      setMessage("");
+      setAttachments([]);
+      setRefresh(Math.random());
+    } catch (err) {
+      console.error("Error submitting comment:", err);
+      alert("Failed to submit comment. Please try again.");
+    }
   };
 
   const isSubmitDisabled =
     (attachments.length > 0 && isEditorEmpty(message)) || loading;
 
-  // 🖼️ Upload image (calls both presign + S3 upload)
+  // 🖼️ Upload image to S3 using API functions
   const uploadToS3 = async (file) => {
     try {
-      const token = localStorage.getItem("jwt_token");
-      // 1️⃣ Get presigned data
-      const presignRes = await axios.post(
-        "http://36.255.71.62:8000/api/v1/tickets/get-presigned-post",
-        { object_name: file.name },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      // 1️⃣ Get presigned data using the API function
+      const presignRes = await getPresignedPost({ object_name: file.name });
       const data = presignRes.data.data;
+      const publicUrl = presignRes.data.public_url;
 
       // 2️⃣ Build FormData
       const formData = new FormData();
@@ -113,11 +122,11 @@ export default function TicketDetails() {
       });
       formData.append("file", file);
 
-      // 3️⃣ Upload using helper
+      // 3️⃣ Upload using helper function
       await postAttachmentToS3(data.url, formData);
 
       // 4️⃣ Return uploaded file URL
-      return presignRes.data.public_url;
+      return publicUrl;
     } catch (err) {
       console.error("❌ Error uploading image:", err);
       alert("Image upload failed.");
@@ -170,7 +179,7 @@ export default function TicketDetails() {
         handlers: { image: imageHandler },
       },
     }),
-    []
+    [],
   );
 
   // 🌀 UI states
@@ -272,12 +281,11 @@ export default function TicketDetails() {
                       </span>
 
                       {/* 🔥 INTERNAL / EXTERNAL BADGE */}
-                      <span
-                        className={`text-xs px-2 py-0.5 rounded 
-        ${comment.is_internal ? "bg-blue-600 text-white" : ""}`}
-                      >
-                        {comment.is_internal ? "Internal" : ""}
-                      </span>
+                      {comment.is_internal && (
+                        <span className="text-xs px-2 py-0.5 rounded bg-blue-600 text-white">
+                          Internal
+                        </span>
+                      )}
                     </div>
 
                     <span className="text-xs text-gray-500">
@@ -331,17 +339,19 @@ export default function TicketDetails() {
             </div>
 
             <div className="flex items-center justify-between mt-4">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={isPrivate}
-                  onChange={(e) => setIsPrivate(e.target.checked)}
-                  className="w-4 h-4"
-                />
-                <span className="text-sm text-gray-700">
-                  {isPrivate ? "Internal Comment" : "External Comment"}
-                </span>
-              </label>
+              {userType !== "agent" && userType !== "customer" && (
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={isPrivate}
+                    onChange={(e) => setIsPrivate(e.target.checked)}
+                    className="w-4 h-4"
+                  />
+                  <span className="text-sm text-gray-700">
+                    {isPrivate ? "Internal Comment" : "External Comment"}
+                  </span>
+                </label>
+              )}
 
               <button
                 onClick={handleSubmit}
@@ -378,7 +388,7 @@ export default function TicketDetails() {
             src={previewImage}
             alt="Preview"
             className="max-w-[90%] max-h-[90%] rounded-lg shadow-lg border border-white cursor-pointer"
-            onClick={(e) => e.stopPropagation()} // prevent closing when clicking image
+            onClick={(e) => e.stopPropagation()}
           />
         </div>
       )}

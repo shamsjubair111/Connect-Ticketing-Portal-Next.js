@@ -5,7 +5,12 @@ import { FileInput, Label, TextInput, Textarea, Button } from "flowbite-react";
 import { IoArrowBack } from "react-icons/io5";
 import { jwtDecode } from "jwt-decode";
 import { useRouter } from "next/navigation";
-import { getAllGroups, getSubGroups, issueTicket } from "@/api/ticketingApis";
+import {
+  getAllGroups,
+  getSubGroups,
+  issueTicket,
+  issueTicketWithoutProblematicNumber,
+} from "@/api/ticketingApis";
 import { checkPhoneFormatEleven, handleFileUpload } from "@/common/functions";
 import { alertContext } from "@/hooks/alertContext";
 
@@ -26,6 +31,16 @@ export default function CreateTicketPage() {
 
   const [userType, setUserType] = useState("agent");
   const [userTypeValidation, setUserTypeValidation] = useState(null);
+  const isPbxUser = userTypeValidation === "pbx_user";
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const token = localStorage.getItem("jwt_token");
+      if (!token) {
+        router.push("/");
+      }
+    }
+  }, []);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -105,22 +120,28 @@ export default function CreateTicketPage() {
   const submitTicket = async (_attachments) => {
     const data = {
       title,
-      problematic_number: "88" + pNumber,
       description: desc,
-      group_id: selectedGroup?._id,
-      group_name: selectedGroup?.group_name,
-      sub_group_id: selectedSubgroup?._id,
-      sub_group_name: selectedSubgroup?.sub_group_bn,
-      issuer_user_type: userType,
+      issuer_user_type: isPbxUser ? "pbx_user" : userType,
       ...(requesterName && { requester_name: requesterName }),
       ...(requesterEmail && { requester_email: requesterEmail }),
       ...(!!_attachments && { attachments: _attachments }),
+      ...(!isPbxUser && {
+        problematic_number: "88" + pNumber,
+        group_id: selectedGroup?._id,
+        group_name: selectedGroup?.group_name,
+        sub_group_id: selectedSubgroup?._id,
+        sub_group_name: selectedSubgroup?.sub_group_bn,
+      }),
     };
 
     setButtonLoader(true);
 
     try {
-      await issueTicket(data);
+      if (isPbxUser) {
+        await issueTicketWithoutProblematicNumber(data);
+      } else {
+        await issueTicket(data);
+      }
       setAlertCtx({
         title: "Success",
         message: "Ticket created successfully!",
@@ -171,42 +192,76 @@ export default function CreateTicketPage() {
             Ticket Details
           </h2>
 
-          {/* Group */}
-          <div className="mb-6">
-            <Label htmlFor="group" value="Select Group" />
-            <select
-              id="group"
-              value={selectedGroup?._id || ""}
-              onChange={handleGroupChange}
-              className="mt-2 w-full border border-gray-300 text-gray-900 text-sm rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 p-2.5 bg-white"
-            >
-              <option value="">Select a group</option>
-              {groups.map((g) => (
-                <option key={g._id} value={g._id}>
-                  {g.group_name}
-                </option>
-              ))}
-            </select>
-          </div>
+          {!isPbxUser && (
+            <>
+              {/* Group */}
+              <div className="mb-6">
+                <Label htmlFor="group" value="Select Group" />
+                <select
+                  id="group"
+                  value={selectedGroup?._id || ""}
+                  onChange={handleGroupChange}
+                  className="mt-2 w-full border border-gray-300 text-gray-900 text-sm rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 p-2.5 bg-white"
+                >
+                  <option value="">Select a group</option>
+                  {groups.map((g) => (
+                    <option key={g._id} value={g._id}>
+                      {g.group_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-          {/* Subgroup */}
-          {subgroups.length > 0 && (
-            <div className="mb-6">
-              <Label htmlFor="subgroup" value="Select Subgroup" />
-              <select
-                id="subgroup"
-                value={selectedSubgroup?._id || ""}
-                onChange={handleSubgroupChange}
-                className="mt-2 w-full border border-gray-300 text-gray-900 text-sm rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 p-2.5 bg-white"
-              >
-                <option value="">Select a subgroup</option>
-                {subgroups.map((s) => (
-                  <option key={s._id} value={s._id}>
-                    {s.sub_group_bn}
-                  </option>
-                ))}
-              </select>
-            </div>
+              {/* Subgroup */}
+              {subgroups.length > 0 && (
+                <div className="mb-6">
+                  <Label htmlFor="subgroup" value="Select Subgroup" />
+                  <select
+                    id="subgroup"
+                    value={selectedSubgroup?._id || ""}
+                    onChange={handleSubgroupChange}
+                    className="mt-2 w-full border border-gray-300 text-gray-900 text-sm rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 p-2.5 bg-white"
+                  >
+                    <option value="">Select a subgroup</option>
+                    {subgroups.map((s) => (
+                      <option key={s._id} value={s._id}>
+                        {s.sub_group_bn}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Problematic number */}
+              <div className="mb-6">
+                <Label htmlFor="pNumber" value="Problematic Number" />
+                <TextInput
+                  id="pNumber"
+                  type="text"
+                  value={pNumber}
+                  addon="+88"
+                  placeholder="01XXXXXXXXX"
+                  onChange={(e) => setPNumber(e.target.value)}
+                  className="mt-2"
+                />
+              </div>
+
+              {/* User Type */}
+              {userTypeValidation !== "customer" && (
+                <div className="mb-6">
+                  <Label htmlFor="userType" value="Select User Type" />
+                  <select
+                    id="userType"
+                    value={userType}
+                    onChange={(e) => setUserType(e.target.value)}
+                    className="mt-2 w-full border border-gray-300 text-gray-900 text-sm rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 p-2.5 bg-white"
+                  >
+                    <option value="agent">Agent</option>
+                    <option value="customer">Customer</option>
+                  </select>
+                </div>
+              )}
+            </>
           )}
 
           {/* Title */}
@@ -218,20 +273,6 @@ export default function CreateTicketPage() {
               placeholder="Enter ticket title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="mt-2"
-            />
-          </div>
-
-          {/* Problematic number */}
-          <div className="mb-6">
-            <Label htmlFor="pNumber" value="Problematic Number" />
-            <TextInput
-              id="pNumber"
-              type="text"
-              value={pNumber}
-              addon="+88"
-              placeholder="01XXXXXXXXX"
-              onChange={(e) => setPNumber(e.target.value)}
               className="mt-2"
             />
           </div>
@@ -261,22 +302,6 @@ export default function CreateTicketPage() {
               className="mt-2"
             />
           </div>
-
-          {/* User Type */}
-          {userTypeValidation !== "customer" && (
-            <div className="mb-6">
-              <Label htmlFor="userType" value="Select User Type" />
-              <select
-                id="userType"
-                value={userType}
-                onChange={(e) => setUserType(e.target.value)}
-                className="mt-2 w-full border border-gray-300 text-gray-900 text-sm rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 p-2.5 bg-white"
-              >
-                <option value="agent">Agent</option>
-                <option value="customer">Customer</option>
-              </select>
-            </div>
-          )}
 
           {/* Description */}
           <div className="mb-8">
@@ -330,22 +355,25 @@ export default function CreateTicketPage() {
               onClick={handleSubmit}
               disabled={
                 !title ||
-                !pNumber ||
                 !desc ||
-                !checkPhoneFormatEleven("88" + pNumber) ||
-                !selectedGroup
+                (isPbxUser
+                  ? false
+                  : !pNumber ||
+                    !checkPhoneFormatEleven("88" + pNumber) ||
+                    !selectedGroup)
               }
               className={`w-full py-2.5 text-base font-medium rounded-lg transition-all
   ${buttonLoader ? "cursor-wait bg-blue-500" : "cursor-pointer"}
   ${
     !title ||
-    !pNumber ||
     !desc ||
-    !checkPhoneFormatEleven("88" + pNumber) ||
-    !selectedGroup
+    (isPbxUser
+      ? false
+      : !pNumber || !checkPhoneFormatEleven("88" + pNumber) || !selectedGroup)
       ? "bg-blue-300 text-white cursor-not-allowed opacity-70"
       : "bg-blue-600 hover:bg-blue-700 text-white focus:ring-2 focus:ring-blue-400"
-  }`}
+  }
+`}
             >
               {buttonLoader && (
                 <span className="mr-2 animate-spin border-2 border-white border-t-transparent rounded-full w-4 h-4"></span>

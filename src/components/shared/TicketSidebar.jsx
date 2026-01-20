@@ -103,56 +103,75 @@ export default function TicketSidebar() {
       {/* Scrollable Middle Content */}
       <div className="flex-1 overflow-y-auto">
         <div className="p-4">
-          <SidebarItem
-            label="All Tickets"
-            isActive={mounted && selectedItem === ""}
-            onClick={() => {
-              setSelectedItem("");
-              router.push("/tickets");
-            }}
-          />
-          <SidebarItem
-            label="Forwarded Tickets"
-            isActive={mounted && selectedItem === "forwarded"}
-            onClick={() => {
-              setSelectedItem("forwarded");
-              router.push("/forwarded-tickets");
-            }}
-          />
-          <SidebarItem
-            label="User"
-            isActive={mounted && selectedItem === "user"}
-            onClick={() => {
-              setSelectedItem("user");
-              router.push("/user-info"); // ✅ add this line
-            }}
-          />
-          <SidebarItem
-            label="Group"
-            isActive={mounted && selectedItem === "group"}
-            onClick={() => {
-              setSelectedItem("group");
-              router.push("/group-info");
-            }}
-          />
-          <SidebarItem
-            label="Report"
-            isActive={mounted && selectedItem === "report"}
-            onClick={() => {
-              setSelectedItem("report");
-              router.push("/report");
-            }}
-          />
+          {userType !== "agent" &&
+            userType !== "customer" &&
+            userType !== "pbx_user" && (
+              <SidebarItem
+                label="All Tickets"
+                isActive={mounted && selectedItem === ""}
+                onClick={() => {
+                  setSelectedItem("");
+                  router.push("/tickets");
+                }}
+              />
+            )}
+
+          {userType !== "agent" &&
+            userType !== "customer" &&
+            userType !== "pbx_user" && (
+              <SidebarItem
+                label="Forwarded Tickets"
+                isActive={mounted && selectedItem === "forwarded"}
+                onClick={() => {
+                  setSelectedItem("forwarded");
+                  router.push("/forwarded-tickets");
+                }}
+              />
+            )}
+          {role === "admin" && (
+            <SidebarItem
+              label="User"
+              isActive={mounted && selectedItem === "user"}
+              onClick={() => {
+                setSelectedItem("user");
+                router.push("/user-info"); // ✅ add this line
+              }}
+            />
+          )}
+
+          {(role === "admin" || role === "moderator") && (
+            <SidebarItem
+              label="Group"
+              isActive={mounted && selectedItem === "group"}
+              onClick={() => {
+                setSelectedItem("group");
+                router.push("/group-info");
+              }}
+            />
+          )}
+
+          {(userType === "cc" || userType === "rs") && (
+            <SidebarItem
+              label="Report"
+              isActive={mounted && selectedItem === "report"}
+              onClick={() => {
+                setSelectedItem("report");
+                router.push("/report");
+              }}
+            />
+          )}
 
           {/* NEW SECTION: PRIORITIES */}
-          <SidebarItem
-            label="Priorities"
-            isActive={mounted && selectedItem === "priorities"}
-            onClick={() => {
-              setSelectedItem("priorities");
-              router.push("/priorities"); // <-- change route if needed
-            }}
-          />
+          {(role === "admin" || role === "moderator") && (
+            <SidebarItem
+              label="Priorities"
+              isActive={mounted && selectedItem === "priorities"}
+              onClick={() => {
+                setSelectedItem("priorities");
+                router.push("/priorities"); // <-- change route if needed
+              }}
+            />
+          )}
 
           {/* NEW SECTION: STATUSES */}
           {/* <SidebarItem
@@ -165,18 +184,20 @@ export default function TicketSidebar() {
           /> */}
 
           {/* NEW SECTION: TAGS */}
-          <SidebarItem
-            label="Tags"
-            isActive={mounted && selectedItem === "tags"}
-            onClick={() => {
-              setSelectedItem("tags");
-              router.push("/tags"); // <-- change route if needed
-            }}
-          />
+          {(role === "admin" || role === "moderator") && (
+            <SidebarItem
+              label="Tags"
+              isActive={mounted && selectedItem === "tags"}
+              onClick={() => {
+                setSelectedItem("tags");
+                router.push("/tags"); // <-- change route if needed
+              }}
+            />
+          )}
         </div>
 
         {/* Recent Tickets */}
-        <div className="p-4 border-b border-border">
+        {/* <div className="p-4 border-b border-border">
           <h2 className="text-blue-600 font-semibold text-sm mb-3">
             All recent tickets
           </h2>
@@ -189,9 +210,9 @@ export default function TicketSidebar() {
                 setSelectedStatus("to_handle");
               }}
             />
-            {/* <SidebarItem label="My open tickets" /> */}
+            <SidebarItem label="My open tickets" />
           </div>
-        </div>
+        </div> */}
 
         {/* Ticket Views */}
         {/* <div className="p-4 border-b border-border">
@@ -210,103 +231,105 @@ export default function TicketSidebar() {
         </div> */}
 
         {/* Statuses */}
-        {/* Statuses */}
-        {isTicketsPage ? (
-          <div className="p-4 border-b border-border">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-muted-foreground font-semibold text-xs uppercase tracking-wide">
-                Statuses
-              </h3>
 
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Info className="w-4 h-4 text-muted-foreground cursor-pointer" />
-                  </TooltipTrigger>
-                  <TooltipContent
-                    side="top"
-                    className="bg-slate-800 text-white text-xs rounded px-2 py-1 shadow-md"
-                  >
-                    <p>Statuses help you stay up to date with your tickets.</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-            <div className="space-y-2">
-              <SidebarItem
-                label="All"
-                isActive={!selectedStatus}
-                onClick={() => {
-                  clearFilterStatus();
-                  setSelectedStatus("");
-                }}
-              />
-              <SidebarItem
-                label="Open"
-                isActive={selectedStatus === "open"}
-                onClick={() => {
-                  clearFilterStatus();
-                  setSelectedStatus("open");
-                }}
-              />
-              <SidebarItem
-                label="In Progress"
-                isActive={selectedStatus === "in_progress"}
-                onClick={() => {
-                  clearFilterStatus();
-                  setSelectedStatus("in_progress");
-                }}
-              />
-              <SidebarItem
-                label="Solved"
-                isActive={selectedStatus === "closed"}
-                onClick={() => {
-                  clearFilterStatus();
-                  setSelectedStatus("closed");
-                }}
-              />
-            </div>
+        <div className="p-4 border-b border-border">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-muted-foreground font-semibold text-xs uppercase tracking-wide">
+              Statuses
+            </h3>
+
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info className="w-4 h-4 text-muted-foreground cursor-pointer" />
+                </TooltipTrigger>
+                <TooltipContent
+                  side="top"
+                  className="bg-slate-800 text-white text-xs rounded px-2 py-1 shadow-md"
+                >
+                  <p>Statuses help you stay up to date with your tickets.</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
-        ) : (
-          <div className="p-4 border-b border-border opacity-40 pointer-events-none">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-muted-foreground font-semibold text-xs uppercase tracking-wide">
-                Statuses
-              </h3>
-              <Info className="w-4 h-4 text-muted-foreground" />
-            </div>
-            <div className="space-y-2">
-              <SidebarItem label="All" />
-              <SidebarItem label="Open" />
-              <SidebarItem label="In Progress" />
-              <SidebarItem label="Solved" />
-            </div>
+          <div className="space-y-2">
+            <SidebarItem
+              label="All"
+              isActive={!selectedStatus}
+              onClick={() => {
+                clearFilterStatus();
+                setSelectedStatus("");
+                if (pathname !== "/tickets") {
+                  router.push("/tickets");
+                }
+              }}
+            />
+            <SidebarItem
+              label="Open"
+              isActive={selectedStatus === "open"}
+              onClick={() => {
+                clearFilterStatus();
+                setSelectedStatus("open");
+
+                if (pathname !== "/tickets") {
+                  router.push("/tickets");
+                }
+              }}
+            />
+            <SidebarItem
+              label="In Progress"
+              isActive={selectedStatus === "in_progress"}
+              onClick={() => {
+                clearFilterStatus();
+                setSelectedStatus("in_progress");
+                if (pathname !== "/tickets") {
+                  router.push("/tickets");
+                }
+              }}
+            />
+            <SidebarItem
+              label="Solved"
+              isActive={selectedStatus === "closed"}
+              onClick={() => {
+                clearFilterStatus();
+                setSelectedStatus("closed");
+                if (pathname !== "/tickets") {
+                  router.push("/tickets");
+                }
+              }}
+            />
           </div>
-        )}
+        </div>
 
         {/* Folders */}
         <div className="p-4">
-          <h3 className="text-muted-foreground font-semibold text-xs uppercase tracking-wide mb-3">
-            Folders
-          </h3>
+          {(role === "admin" || role === "moderator") && (
+            <h3 className="text-muted-foreground font-semibold text-xs uppercase tracking-wide mb-3">
+              Folders
+            </h3>
+          )}
           <div className="space-y-2">
-            <SidebarItem
-              label="Trash"
-              isActive={mounted && selectedItem === "trash"}
-              onClick={() => {
-                setSelectedItem("trash");
-                router.push("/trash");
-              }}
-            />
+            {(role === "admin" || role === "moderator") && (
+              <SidebarItem
+                label="Trash"
+                isActive={mounted && selectedItem === "trash"}
+                onClick={() => {
+                  setSelectedItem("trash");
+                  router.push("/trash");
+                }}
+              />
+            )}
 
-            <SidebarItem
-              label="Permanently Deleted"
-              isActive={mounted && selectedItem === "permaTrash"}
-              onClick={() => {
-                setSelectedItem("permaTrash");
-                router.push("/permanently-deleted");
-              }}
-            />
+            {(role === "admin" || role === "moderator") && (
+              <SidebarItem
+                label="Permanently Deleted"
+                isActive={mounted && selectedItem === "permaTrash"}
+                onClick={() => {
+                  setSelectedItem("permaTrash");
+                  router.push("/permanently-deleted");
+                }}
+              />
+            )}
           </div>
         </div>
       </div>

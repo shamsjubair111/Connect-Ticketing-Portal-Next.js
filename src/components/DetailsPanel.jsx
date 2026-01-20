@@ -363,42 +363,48 @@ export default function DetailsPanel({
                   </ul>
                 </div>
               ) : (
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-50">
-                  <ul className="py-1 text-sm text-gray-700">
-                    <li
-                      onClick={() => {
-                        setForwardToggle(true);
-                        setAction("forward");
-                        setShowMenu(false);
-                      }}
-                      className="cursor-pointer hover:bg-gray-100 px-4 py-2"
-                    >
-                      Forward
-                    </li>
+                <>
+                  {userType !== "customer" &&
+                    userType !== "pbx_user" &&
+                    userType !== "agent" && (
+                      <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-50">
+                        <ul className="py-1 text-sm text-gray-700">
+                          <li
+                            onClick={() => {
+                              setForwardToggle(true);
+                              setAction("forward");
+                              setShowMenu(false);
+                            }}
+                            className="cursor-pointer hover:bg-gray-100 px-4 py-2"
+                          >
+                            Forward
+                          </li>
 
-                    <li
-                      onClick={() => {
-                        setForwardToggle(true);
-                        setAction("r&f");
-                        setShowMenu(false);
-                      }}
-                      className="cursor-pointer hover:bg-gray-100 px-4 py-2"
-                    >
-                      Resolve & Forward to CC
-                    </li>
+                          <li
+                            onClick={() => {
+                              setForwardToggle(true);
+                              setAction("r&f");
+                              setShowMenu(false);
+                            }}
+                            className="cursor-pointer hover:bg-gray-100 px-4 py-2"
+                          >
+                            Resolve & Forward to CC
+                          </li>
 
-                    <li
-                      onClick={() => {
-                        setResolveToggle(true);
-                        setAction("resolve");
-                        setShowMenu(false);
-                      }}
-                      className="cursor-pointer hover:bg-gray-100 px-4 py-2"
-                    >
-                      Resolve
-                    </li>
-                  </ul>
-                </div>
+                          <li
+                            onClick={() => {
+                              setResolveToggle(true);
+                              setAction("resolve");
+                              setShowMenu(false);
+                            }}
+                            className="cursor-pointer hover:bg-gray-100 px-4 py-2"
+                          >
+                            Resolve
+                          </li>
+                        </ul>
+                      </div>
+                    )}
+                </>
               )}
             </>
           )}
@@ -562,7 +568,10 @@ export default function DetailsPanel({
                   </span>
                   <span className="text-gray-500 text-xs">
                     by{" "}
-                    {ticket.comments[ticket.comments.length - 1].commenter_name}{" "}
+                    {userType === "agent"
+                      ? "Customer Support"
+                      : ticket.comments[ticket.comments.length - 1]
+                          .commenter_name + " "}
                     on{" "}
                     {new Date(
                       ticket.comments[ticket.comments.length - 1].created_at,
@@ -578,36 +587,43 @@ export default function DetailsPanel({
               )}
             </div>
 
-            <div>
-              <label className="text-sm text-gray-600">Status: </label>
-              <select
-                value={status}
-                onChange={(e) => handleStatusChange(e.target.value)}
-                className="mt-1 rounded border border-gray-300 bg-white px-2 py-1 text-sm text-gray-900"
-              >
-                <option>Open</option>
-                <option>In Progress</option>
-                <option>Solved</option>
-              </select>
-            </div>
+            {userType !== "customer" &&
+              userType !== "pbx_user" &&
+              userType !== "agent" && (
+                <div>
+                  <label className="text-sm text-gray-600">Status: </label>
+                  <select
+                    value={status}
+                    onChange={(e) => handleStatusChange(e.target.value)}
+                    className="mt-1 rounded border border-gray-300 bg-white px-2 py-1 text-sm text-gray-900"
+                  >
+                    <option>Open</option>
+                    <option>In Progress</option>
+                    <option>Solved</option>
+                  </select>
+                </div>
+              )}
 
-            <div>
-              <label className="text-sm text-gray-600">Priority: </label>
-              <select
-                value={priority}
-                onChange={(e) => handlePriorityChange(e.target.value)}
-                className="mt-1 rounded border border-gray-300 bg-white px-2 py-1 text-sm text-gray-900"
-              >
-                <option value="">Select Priority</option>
+            {userType !== "customer" &&
+              userType !== "pbx_user" &&
+              userType !== "agent" && (
+                <div>
+                  <label className="text-sm text-gray-600">Priority: </label>
+                  <select
+                    value={priority}
+                    onChange={(e) => handlePriorityChange(e.target.value)}
+                    className="mt-1 rounded border border-gray-300 bg-white px-2 py-1 text-sm text-gray-900"
+                  >
+                    <option value="">Select Priority</option>
 
-                {priorities.map((p) => (
-                  <option key={p.id} value={p.name}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
+                    {priorities.map((p) => (
+                      <option key={p.id} value={p.name}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             {/* <div>
               <label className="text-sm text-gray-600">Source:</label>
               <p className="mt-1 text-sm text-gray-900">Email</p>
@@ -616,49 +632,55 @@ export default function DetailsPanel({
         </AccordionItem>
 
         {/* Tags */}
-        <AccordionItem value="tags">
-          <AccordionTrigger className="py-3 text-base font-semibold text-gray-900 hover:no-underline">
-            Tags
-          </AccordionTrigger>
+        {userType !== "customer" &&
+          userType !== "pbx_user" &&
+          userType !== "agent" && (
+            <AccordionItem value="tags">
+              <AccordionTrigger className="py-3 text-base font-semibold text-gray-900 hover:no-underline">
+                Tags
+              </AccordionTrigger>
 
-          <AccordionContent className="pb-4 pt-2 space-y-3">
-            {/* 🔹 TAG LIST DISPLAY */}
-            <div className="flex flex-wrap gap-2">
-              {ticket?.tags?.length > 0 ? (
-                ticket.tags.map((tag) => (
-                  <div
-                    key={tag.tag_id}
-                    className="flex items-center bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm"
-                  >
-                    <span>{tag.tag_name}</span>
+              <AccordionContent className="pb-4 pt-2 space-y-3">
+                {/* 🔹 TAG LIST DISPLAY */}
+                <div className="flex flex-wrap gap-2">
+                  {ticket?.tags?.length > 0 ? (
+                    ticket.tags.map((tag) => (
+                      <div
+                        key={tag.tag_id}
+                        className="flex items-center bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm"
+                      >
+                        <span>{tag.tag_name}</span>
 
-                    <button
-                      className="ml-2 text-blue-700 hover:text-red-600 font-bold"
-                      onClick={() =>
-                        setRemoveTagData({
-                          id: tag.tag_id,
-                          name: tag.tag_name,
-                        })
-                      }
-                    >
-                      ×
-                    </button>
-                  </div>
-                ))
-              ) : (
-                <p className="text-sm text-gray-500 italic">No tags added</p>
-              )}
-            </div>
+                        <button
+                          className="ml-2 text-blue-700 hover:text-red-600 font-bold"
+                          onClick={() =>
+                            setRemoveTagData({
+                              id: tag.tag_id,
+                              name: tag.tag_name,
+                            })
+                          }
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-sm text-gray-500 italic">
+                      No tags added
+                    </p>
+                  )}
+                </div>
 
-            {/* 🔹 ADD TAG BUTTON */}
-            <button
-              className="text-sm text-gray-600 hover:text-gray-900"
-              onClick={() => setAddTagModal(true)}
-            >
-              + Add tag
-            </button>
-          </AccordionContent>
-        </AccordionItem>
+                {/* 🔹 ADD TAG BUTTON */}
+                <button
+                  className="text-sm text-gray-600 hover:text-gray-900"
+                  onClick={() => setAddTagModal(true)}
+                >
+                  + Add tag
+                </button>
+              </AccordionContent>
+            </AccordionItem>
+          )}
 
         <AddTagToTicketModal
           isOpen={addTagModal}
@@ -712,114 +734,118 @@ export default function DetailsPanel({
         </AccordionItem> */}
 
         {/* Responsibility */}
-        <AccordionItem value="responsibility">
-          <AccordionTrigger className="py-3 text-base font-semibold text-gray-900 hover:no-underline">
-            Responsibility
-          </AccordionTrigger>
-          <AccordionContent className="pb-4 pt-2 space-y-4">
-            <div>
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-semibold text-gray-900">Group</p>
-              </div>
-              {ticket?.group_name ? (
-                <div className="flex items-center gap-3 mt-2">
-                  <div className="flex h-8 w-8 items-center justify-center rounded bg-purple-500 text-xs font-bold text-white">
-                    {getInitials(ticket?.group_name)}
+        {userType !== "customer" &&
+          userType !== "pbx_user" &&
+          userType !== "agent" && (
+            <AccordionItem value="responsibility">
+              <AccordionTrigger className="py-3 text-base font-semibold text-gray-900 hover:no-underline">
+                Responsibility
+              </AccordionTrigger>
+              <AccordionContent className="pb-4 pt-2 space-y-4">
+                <div>
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold text-gray-900">Group</p>
                   </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">
-                      {ticket?.group_name}
+                  {ticket?.group_name ? (
+                    <div className="flex items-center gap-3 mt-2">
+                      <div className="flex h-8 w-8 items-center justify-center rounded bg-purple-500 text-xs font-bold text-white">
+                        {getInitials(ticket?.group_name)}
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">
+                          {ticket?.group_name}
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-gray-600">No group</p>
+                  )}
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold text-gray-900">Agent</p>
+                    <div className="flex items-center gap-2 text-xs">
+                      <button
+                        className="text-blue-600 hover:text-blue-700 font-medium cursor-pointer"
+                        onClick={() => setAssignAgentModal(true)}
+                      >
+                        Assign
+                      </button>
+                    </div>
+                  </div>
+                  {assignedAgent?.assigned_agent?.agent_id ? (
+                    <div className="flex items-center gap-3 mt-2">
+                      <div className="h-8 w-8 rounded-full bg-purple-500 text-white flex items-center justify-center font-semibold text-sm">
+                        {getInitials(assignedAgent?.assigned_agent?.agent_name)}
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">
+                            {assignedAgent?.assigned_agent?.agent_name}
+                          </p>
+                        </div>
+
+                        <button
+                          onClick={handleRemoveAgent}
+                          className="text-red-600 hover:text-red-800"
+                          style={{ cursor: "pointer" }}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-gray-600 mt-1">
+                      No agent assigned to this ticket.
                     </p>
-                  </div>
+                  )}
                 </div>
-              ) : (
-                <p className="text-xs text-gray-600">No group</p>
-              )}
-            </div>
 
-            <div>
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-semibold text-gray-900">Agent</p>
-                <div className="flex items-center gap-2 text-xs">
-                  <button
-                    className="text-blue-600 hover:text-blue-700 font-medium cursor-pointer"
-                    onClick={() => setAssignAgentModal(true)}
-                  >
-                    Assign
-                  </button>
-                </div>
-              </div>
-              {assignedAgent?.assigned_agent?.agent_id ? (
-                <div className="flex items-center gap-3 mt-2">
-                  <div className="h-8 w-8 rounded-full bg-purple-500 text-white flex items-center justify-center font-semibold text-sm">
-                    {getInitials(assignedAgent?.assigned_agent?.agent_name)}
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">
-                        {assignedAgent?.assigned_agent?.agent_name}
+                <div>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-semibold text-gray-900">
+                        People in loop
                       </p>
+                      <button
+                        className="text-blue-600 hover:text-blue-700 font-medium"
+                        onClick={() => setFollowersModal(true)}
+                        style={{ cursor: "pointer" }}
+                      >
+                        Edit
+                      </button>
                     </div>
 
-                    <button
-                      onClick={handleRemoveAgent}
-                      className="text-red-600 hover:text-red-800"
-                      style={{ cursor: "pointer" }}
-                    >
-                      Remove
-                    </button>
+                    {followers.length === 0 ? (
+                      <p className="text-xs text-gray-600">
+                        No followers added yet.
+                      </p>
+                    ) : (
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {followers.map((email) => (
+                          <span
+                            key={email}
+                            className="flex items-center gap-2 px-2 py-1 rounded bg-gray-100 text-xs text-gray-800"
+                          >
+                            {email}
+                            <button
+                              style={{ cursor: "pointer" }}
+                              onClick={() => handleRemoveFollower(email)}
+                              className="hover:text-red-600"
+                            >
+                              <X size={14} />
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
-              ) : (
-                <p className="text-xs text-gray-600 mt-1">
-                  No agent assigned to this ticket.
-                </p>
-              )}
-            </div>
-
-            <div>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-semibold text-gray-900">
-                    People in loop
-                  </p>
-                  <button
-                    className="text-blue-600 hover:text-blue-700 font-medium"
-                    onClick={() => setFollowersModal(true)}
-                    style={{ cursor: "pointer" }}
-                  >
-                    Edit
-                  </button>
-                </div>
-
-                {followers.length === 0 ? (
-                  <p className="text-xs text-gray-600">
-                    No followers added yet.
-                  </p>
-                ) : (
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {followers.map((email) => (
-                      <span
-                        key={email}
-                        className="flex items-center gap-2 px-2 py-1 rounded bg-gray-100 text-xs text-gray-800"
-                      >
-                        {email}
-                        <button
-                          style={{ cursor: "pointer" }}
-                          onClick={() => handleRemoveFollower(email)}
-                          className="hover:text-red-600"
-                        >
-                          <X size={14} />
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          </AccordionContent>
-        </AccordionItem>
+              </AccordionContent>
+            </AccordionItem>
+          )}
 
         {/* Requester */}
         {/* <AccordionItem value="requester">
