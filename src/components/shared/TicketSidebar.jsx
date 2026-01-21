@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus, Search, Info } from "lucide-react";
+import { Plus, Info } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { jwtDecode } from "jwt-decode";
@@ -11,10 +11,12 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useTicketContext } from "@/context/TicketContext";
 
-export default function TicketSidebar() {
+// Cache user data to avoid repeated JWT decoding
+let cachedUserData = null;
+
+export default function TicketSidebar({ onNavigate }) {
   const { selectedItem, setSelectedItem, selectedStatus, setSelectedStatus } =
     useTicketContext();
   const router = useRouter();
@@ -23,17 +25,23 @@ export default function TicketSidebar() {
   const [userType, setUserType] = useState("");
   const [role, setRole] = useState("");
 
-  const isTicketsPage = pathname === "/tickets";
-
   useEffect(() => {
     setMounted(true);
   }, []);
 
+  // ✅ PERFORMANCE FIX: Cache JWT decode result
   useEffect(() => {
+    if (cachedUserData) {
+      setUserType(cachedUserData.user_type);
+      setRole(cachedUserData.role);
+      return;
+    }
+
     try {
       const token = localStorage.getItem("jwt_token");
       if (token) {
         const decoded = jwtDecode(token);
+        cachedUserData = decoded;
         setUserType(decoded.user_type);
         setRole(decoded.role);
       }
@@ -42,7 +50,7 @@ export default function TicketSidebar() {
     }
   }, []);
 
-  // ✅ Apply selectedItem only after mount (client side)
+  // ✅ Apply selectedItem only after mount
   useEffect(() => {
     if (!mounted) return;
 
@@ -55,64 +63,62 @@ export default function TicketSidebar() {
     else if (pathname === "/tags") setSelectedItem("tags");
     else if (pathname === "/trash") setSelectedItem("trash");
     else if (pathname === "/permanently-deleted") setSelectedItem("permaTrash");
-  }, [pathname, mounted]);
+  }, [pathname, mounted, setSelectedItem]);
 
   function clearFilterStatus() {
     try {
-      // Remove "Status" filter only, not everything
       const saved = localStorage.getItem("ticket_filters");
       if (saved) {
         const parsed = JSON.parse(saved);
         const updated = parsed.filter((f) => f.label !== "Status");
         localStorage.setItem("ticket_filters", JSON.stringify(updated));
       }
-
-      // Broadcast a manual event to let Filter.jsx know
       window.dispatchEvent(new Event("storage"));
     } catch (e) {
       console.error("Failed to clear filters:", e);
     }
   }
 
+  // Helper function to handle navigation and close mobile menu
+  const handleNavigate = (path, item) => {
+    setSelectedItem(item);
+    router.push(path);
+    onNavigate?.(); // Close mobile sidebar
+  };
+
   return (
     <div className="w-full bg-background border-r border-border flex flex-col min-h-full relative">
       {/* Fixed top section */}
-      <div className="sticky top-0 z-20 bg-white border-b border-border p-4">
-        <div className="flex items-center justify-between mb-4">
-          <h1 className="text-xl font-bold text-foreground">Tickets</h1>
+      <div className="sticky top-0 z-20 bg-white border-b border-border p-3 md:p-4">
+        <div className="flex items-center justify-between mb-3 md:mb-4">
+          <h1 className="text-lg md:text-xl font-bold text-foreground">
+            Tickets
+          </h1>
           <Button
             size="sm"
-            onClick={() => router.push("/createTicket")}
-            className="bg-blue-600 hover:bg-blue-700 text-white gap-1 cursor-pointer"
+            onClick={() => {
+              router.push("/createTicket");
+              onNavigate?.();
+            }}
+            className="bg-blue-600 hover:bg-blue-700 text-white gap-1 cursor-pointer text-xs md:text-sm px-2 md:px-3"
           >
             <Plus className="w-4 h-4" />
-            New ticket
+            <span className="hidden sm:inline">New ticket</span>
+            <span className="sm:hidden">New</span>
           </Button>
         </div>
-
-        {/* Search Bar */}
-        {/* <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Search in all tickets..."
-            className="pl-10 bg-white border border-gray-200 text-foreground placeholder:text-muted-foreground"
-          />
-        </div> */}
       </div>
 
       {/* Scrollable Middle Content */}
       <div className="flex-1 overflow-y-auto">
-        <div className="p-4">
+        <div className="p-3 md:p-4">
           {userType !== "agent" &&
             userType !== "customer" &&
             userType !== "pbx_user" && (
               <SidebarItem
                 label="All Tickets"
                 isActive={mounted && selectedItem === ""}
-                onClick={() => {
-                  setSelectedItem("");
-                  router.push("/tickets");
-                }}
+                onClick={() => handleNavigate("/tickets", "")}
               />
             )}
 
@@ -122,20 +128,17 @@ export default function TicketSidebar() {
               <SidebarItem
                 label="Forwarded Tickets"
                 isActive={mounted && selectedItem === "forwarded"}
-                onClick={() => {
-                  setSelectedItem("forwarded");
-                  router.push("/forwarded-tickets");
-                }}
+                onClick={() =>
+                  handleNavigate("/forwarded-tickets", "forwarded")
+                }
               />
             )}
+
           {role === "admin" && (
             <SidebarItem
               label="User"
               isActive={mounted && selectedItem === "user"}
-              onClick={() => {
-                setSelectedItem("user");
-                router.push("/user-info"); // ✅ add this line
-              }}
+              onClick={() => handleNavigate("/user-info", "user")}
             />
           )}
 
@@ -143,10 +146,7 @@ export default function TicketSidebar() {
             <SidebarItem
               label="Group"
               isActive={mounted && selectedItem === "group"}
-              onClick={() => {
-                setSelectedItem("group");
-                router.push("/group-info");
-              }}
+              onClick={() => handleNavigate("/group-info", "group")}
             />
           )}
 
@@ -154,85 +154,29 @@ export default function TicketSidebar() {
             <SidebarItem
               label="Report"
               isActive={mounted && selectedItem === "report"}
-              onClick={() => {
-                setSelectedItem("report");
-                router.push("/report");
-              }}
+              onClick={() => handleNavigate("/report", "report")}
             />
           )}
 
-          {/* NEW SECTION: PRIORITIES */}
           {(role === "admin" || role === "moderator") && (
             <SidebarItem
               label="Priorities"
               isActive={mounted && selectedItem === "priorities"}
-              onClick={() => {
-                setSelectedItem("priorities");
-                router.push("/priorities"); // <-- change route if needed
-              }}
+              onClick={() => handleNavigate("/priorities", "priorities")}
             />
           )}
 
-          {/* NEW SECTION: STATUSES */}
-          {/* <SidebarItem
-            label="Statuses"
-            isActive={mounted && selectedItem === "statuses"}
-            onClick={() => {
-              setSelectedItem("statuses");
-              router.push("/statuses"); // <-- change route if needed
-            }}
-          /> */}
-
-          {/* NEW SECTION: TAGS */}
           {(role === "admin" || role === "moderator") && (
             <SidebarItem
               label="Tags"
               isActive={mounted && selectedItem === "tags"}
-              onClick={() => {
-                setSelectedItem("tags");
-                router.push("/tags"); // <-- change route if needed
-              }}
+              onClick={() => handleNavigate("/tags", "tags")}
             />
           )}
         </div>
 
-        {/* Recent Tickets */}
-        {/* <div className="p-4 border-b border-border">
-          <h2 className="text-blue-600 font-semibold text-sm mb-3">
-            All recent tickets
-          </h2>
-          <div className="space-y-2">
-            <SidebarItem
-              label="Tickets to handle"
-              isActive={selectedStatus === "to_handle"}
-              onClick={() => {
-                clearFilterStatus();
-                setSelectedStatus("to_handle");
-              }}
-            />
-            <SidebarItem label="My open tickets" />
-          </div>
-        </div> */}
-
-        {/* Ticket Views */}
-        {/* <div className="p-4 border-b border-border">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-muted-foreground font-semibold text-xs uppercase tracking-wide">
-              Ticket Views
-            </h3>
-            <a
-              href="#"
-              className="text-blue-600 text-sm font-semibold hover:underline"
-            >
-              Manage
-            </a>
-          </div>
-          <SidebarItem label="My tickets in last 7 days" />
-        </div> */}
-
         {/* Statuses */}
-
-        <div className="p-4 border-b border-border">
+        <div className="p-3 md:p-4 border-b border-border">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-muted-foreground font-semibold text-xs uppercase tracking-wide">
               Statuses
@@ -262,6 +206,7 @@ export default function TicketSidebar() {
                 if (pathname !== "/tickets") {
                   router.push("/tickets");
                 }
+                onNavigate?.();
               }}
             />
             <SidebarItem
@@ -270,10 +215,10 @@ export default function TicketSidebar() {
               onClick={() => {
                 clearFilterStatus();
                 setSelectedStatus("open");
-
                 if (pathname !== "/tickets") {
                   router.push("/tickets");
                 }
+                onNavigate?.();
               }}
             />
             <SidebarItem
@@ -285,6 +230,7 @@ export default function TicketSidebar() {
                 if (pathname !== "/tickets") {
                   router.push("/tickets");
                 }
+                onNavigate?.();
               }}
             />
             <SidebarItem
@@ -296,13 +242,14 @@ export default function TicketSidebar() {
                 if (pathname !== "/tickets") {
                   router.push("/tickets");
                 }
+                onNavigate?.();
               }}
             />
           </div>
         </div>
 
         {/* Folders */}
-        <div className="p-4">
+        <div className="p-3 md:p-4">
           {(role === "admin" || role === "moderator") && (
             <h3 className="text-muted-foreground font-semibold text-xs uppercase tracking-wide mb-3">
               Folders
@@ -313,10 +260,7 @@ export default function TicketSidebar() {
               <SidebarItem
                 label="Trash"
                 isActive={mounted && selectedItem === "trash"}
-                onClick={() => {
-                  setSelectedItem("trash");
-                  router.push("/trash");
-                }}
+                onClick={() => handleNavigate("/trash", "trash")}
               />
             )}
 
@@ -324,30 +268,29 @@ export default function TicketSidebar() {
               <SidebarItem
                 label="Permanently Deleted"
                 isActive={mounted && selectedItem === "permaTrash"}
-                onClick={() => {
-                  setSelectedItem("permaTrash");
-                  router.push("/permanently-deleted");
-                }}
+                onClick={() =>
+                  handleNavigate("/permanently-deleted", "permaTrash")
+                }
               />
             )}
           </div>
         </div>
       </div>
 
-      {/* Fixed Footer */}
-      <div className="sticky bottom-0 z-20 bg-white border-t border-border p-4">
+      {/* Fixed Footer - Hidden on mobile to save space */}
+      <div className="hidden md:block sticky bottom-0 z-20 bg-white border-t border-border p-4">
         <Button
           variant="outline"
-          className="w-full text-foreground border-border hover:bg-muted bg-transparent"
+          className="w-full text-foreground border-border hover:bg-muted bg-transparent text-sm"
         >
-          Manage your Ticketing System
+          Manage Ticketing System
         </Button>
       </div>
     </div>
   );
 }
 
-/* Small reusable component */
+/* Reusable sidebar item component */
 function SidebarItem({ label, count, isActive, onClick }) {
   return (
     <div

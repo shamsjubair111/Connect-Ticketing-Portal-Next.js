@@ -72,7 +72,10 @@ const Table = ({ data, loading, columns, reload, page }) => {
       )}
 
       {/* ====================== TABLE ====================== */}
-      <div className="w-full bg-white rounded-sm border border-gray-200">
+      <div
+        className="w-full bg-white rounded-sm border border-gray-200"
+        style={{ overflowX: "scroll" }}
+      >
         <table className="w-full">
           <thead>
             <tr className="border-b border-gray-200 bg-gray-50">

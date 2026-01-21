@@ -19,7 +19,7 @@ export default function Pagination({
 
   const getPageNumbers = () => {
     const pages = [];
-    const maxVisible = 5;
+    const maxVisible = 2;
     const halfVisible = Math.floor(maxVisible / 2);
 
     if (totalPages <= maxVisible) {
@@ -77,8 +77,8 @@ export default function Pagination({
               page === currentPage
                 ? "bg-blue-500 text-white"
                 : page === "..."
-                ? "cursor-default text-gray-600"
-                : "text-gray-600 hover:bg-gray-100"
+                  ? "cursor-default text-gray-600"
+                  : "text-gray-600 hover:bg-gray-100"
             }`}
           >
             {page}

@@ -110,22 +110,18 @@ export default function TicketDetails() {
   // 🖼️ Upload image to S3 using API functions
   const uploadToS3 = async (file) => {
     try {
-      // 1️⃣ Get presigned data using the API function
       const presignRes = await getPresignedPost({ object_name: file.name });
       const data = presignRes.data.data;
       const publicUrl = presignRes.data.public_url;
 
-      // 2️⃣ Build FormData
       const formData = new FormData();
       Object.entries(data.fields).forEach(([key, value]) => {
         formData.append(key, value);
       });
       formData.append("file", file);
 
-      // 3️⃣ Upload using helper function
       await postAttachmentToS3(data.url, formData);
 
-      // 4️⃣ Return uploaded file URL
       return publicUrl;
     } catch (err) {
       console.error("❌ Error uploading image:", err);
@@ -150,16 +146,13 @@ export default function TicketDetails() {
         const publicUrl = await uploadToS3(file);
         if (!publicUrl) continue;
 
-        // Insert image into editor
         const range = quill.getSelection(true);
         quill.insertEmbed(range.index, "image", publicUrl);
         quill.insertText(range.index + 1, "\n");
         quill.setSelection(range.index + 2);
 
-        // Save to attachments
         setAttachments((prev) => {
           const updated = [...prev, publicUrl];
-          console.log("Updated attachments:", updated);
           return updated;
         });
       }
@@ -185,65 +178,67 @@ export default function TicketDetails() {
   // 🌀 UI states
   if (loading)
     return (
-      <div className="p-10 text-center text-gray-600">
-        <h2 className="text-xl font-semibold">Loading ticket...</h2>
+      <div className="p-6 md:p-10 text-center text-gray-600">
+        <h2 className="text-lg md:text-xl font-semibold">Loading ticket...</h2>
       </div>
     );
 
   if (error)
     return (
-      <div className="p-10 text-center text-red-600">
-        <h2 className="text-xl font-semibold">Error</h2>
+      <div className="p-6 md:p-10 text-center text-red-600">
+        <h2 className="text-lg md:text-xl font-semibold">Error</h2>
         <p className="text-sm mt-2">{error}</p>
       </div>
     );
 
   if (!ticket)
     return (
-      <div className="p-10 text-center text-gray-600">
-        <h2 className="text-xl font-semibold">Ticket not found</h2>
+      <div className="p-6 md:p-10 text-center text-gray-600">
+        <h2 className="text-lg md:text-xl font-semibold">Ticket not found</h2>
       </div>
     );
 
-  // ✅ Render full page
+  // ✅ Render full page with responsive layout
   return (
-    <div className="p-6 min-h-screen bg-gray-50">
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-        {/* 🎟️ Left Side */}
-        <div className="lg:col-span-8 bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
+    <div className="p-3 md:p-6 min-h-screen bg-gray-50">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 md:gap-4">
+        {/* 🎟️ Left Side - Main Content */}
+        <div className="lg:col-span-8 bg-white p-3 md:p-6 rounded-lg border border-gray-200 shadow-sm">
           {/* Header */}
-          <div className="border-b p-4 flex items-center justify-between">
-            <div className="flex items-center gap-3 flex-1">
+          <div className="border-b p-3 md:p-4 flex items-center justify-between">
+            <div className="flex items-center gap-2 md:gap-3 flex-1 min-w-0">
               <ChevronLeft
                 onClick={() => router.push("/tickets")}
-                className="w-5 h-5 cursor-pointer hover:text-blue-600"
+                className="w-5 h-5 cursor-pointer hover:text-blue-600 flex-shrink-0"
               />
-              <span className="text-sm text-gray-700 flex-1 font-medium">
+              <span className="text-xs md:text-sm text-gray-700 flex-1 font-medium truncate">
                 {ticket?.title}
               </span>
-              <Edit2 className="w-4 h-4 text-gray-500 cursor-pointer" />
+              <Edit2 className="w-4 h-4 text-gray-500 cursor-pointer flex-shrink-0" />
             </div>
           </div>
 
           {/* Info */}
-          <div className="p-6 border-b text-sm text-gray-700 leading-relaxed">
-            <p>
+          <div className="p-3 md:p-6 border-b text-xs md:text-sm text-gray-700 leading-relaxed space-y-1">
+            <p className="break-words">
               <b>Ticket ID:</b> {ticket.ticket_id}
             </p>
-            <p>
+            <p className="break-words">
               <b>Issued To:</b> {ticket.issued_to}
             </p>
-            <p>
+            <p className="break-words">
               <b>Issued By:</b> {ticket.issuer_number}
             </p>
           </div>
 
           {/* Attachments (From Ticket Details) */}
           {ticket.attachments?.length > 0 && (
-            <div className="p-6 border-b bg-white">
-              <h3 className="text-lg font-semibold mb-3">Attachments</h3>
+            <div className="p-3 md:p-6 border-b bg-white">
+              <h3 className="text-base md:text-lg font-semibold mb-3">
+                Attachments
+              </h3>
 
-              <div className="flex flex-wrap gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:flex md:flex-wrap gap-2 md:gap-4">
                 {ticket.attachments.map((url, index) => (
                   <img
                     key={index}
@@ -252,7 +247,7 @@ export default function TicketDetails() {
                     onClick={() =>
                       setPreviewImage(previewImage === url ? null : url)
                     }
-                    className={`w-40 h-40 object-cover rounded border cursor-pointer transition 
+                    className={`w-full md:w-40 h-32 md:h-40 object-cover rounded border cursor-pointer transition 
             ${
               previewImage === url
                 ? "scale-105 ring-4 ring-blue-400"
@@ -265,22 +260,23 @@ export default function TicketDetails() {
           )}
 
           {/* Comments */}
-          <div className="p-6">
-            <h3 className="text-lg font-semibold mb-3">Comments</h3>
+          <div className="p-3 md:p-6">
+            <h3 className="text-base md:text-lg font-semibold mb-3">
+              Comments
+            </h3>
 
             {ticket.comments?.length > 0 ? (
               ticket.comments.map((comment, i) => (
                 <div
                   key={comment.id || i}
-                  className="mb-4 border rounded-lg p-4 bg-gray-50"
+                  className="mb-4 border rounded-lg p-3 md:p-4 bg-gray-50"
                 >
-                  <div className="flex justify-between mb-2 items-center">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-gray-800">
+                  <div className="flex flex-col sm:flex-row sm:justify-between mb-2 gap-2 sm:items-center">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-medium text-gray-800 text-sm md:text-base">
                         {comment.commenter_name || "Unknown"}
                       </span>
 
-                      {/* 🔥 INTERNAL / EXTERNAL BADGE */}
                       {comment.is_internal && (
                         <span className="text-xs px-2 py-0.5 rounded bg-blue-600 text-white">
                           Internal
@@ -293,12 +289,12 @@ export default function TicketDetails() {
                     </span>
                   </div>
 
-                  <p className="text-gray-700 whitespace-pre-line">
+                  <p className="text-sm md:text-base text-gray-700 whitespace-pre-line break-words">
                     {comment.message || ""}
                   </p>
 
                   {comment.attachments?.length > 0 && (
-                    <div className="mt-3 flex flex-wrap gap-3">
+                    <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 md:flex md:flex-wrap gap-2 md:gap-3">
                       {comment.attachments.map((url, index) => (
                         <img
                           key={index}
@@ -307,7 +303,7 @@ export default function TicketDetails() {
                           onClick={() =>
                             setPreviewImage(previewImage === url ? null : url)
                           }
-                          className={`w-40 h-40 object-cover rounded border cursor-pointer transition ${
+                          className={`w-full md:w-40 h-32 md:h-40 object-cover rounded border cursor-pointer transition ${
                             previewImage === url
                               ? "scale-105 ring-4 ring-blue-400"
                               : "hover:opacity-80"
@@ -324,7 +320,7 @@ export default function TicketDetails() {
           </div>
 
           {/* Add Comment */}
-          <div className="border-t p-6 bg-white">
+          <div className="border-t p-3 md:p-6 bg-white">
             <div className="mb-4 border rounded overflow-hidden">
               <ReactQuill
                 ref={quillRef}
@@ -334,11 +330,11 @@ export default function TicketDetails() {
                 placeholder="Write your reply..."
                 modules={modules}
                 className="bg-white"
-                style={{ height: "220px", overflowY: "auto" }}
+                style={{ height: "180px", overflowY: "auto" }}
               />
             </div>
 
-            <div className="flex items-center justify-between mt-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mt-4">
               {userType !== "agent" && userType !== "customer" && (
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
@@ -347,7 +343,7 @@ export default function TicketDetails() {
                     onChange={(e) => setIsPrivate(e.target.checked)}
                     className="w-4 h-4"
                   />
-                  <span className="text-sm text-gray-700">
+                  <span className="text-xs md:text-sm text-gray-700">
                     {isPrivate ? "Internal Comment" : "External Comment"}
                   </span>
                 </label>
@@ -356,7 +352,7 @@ export default function TicketDetails() {
               <button
                 onClick={handleSubmit}
                 disabled={isSubmitDisabled}
-                className={`px-6 py-2 rounded text-white 
+                className={`w-full sm:w-auto px-4 md:px-6 py-2 rounded text-white text-sm md:text-base
     ${
       isSubmitDisabled
         ? "bg-gray-400 cursor-not-allowed"
@@ -369,8 +365,8 @@ export default function TicketDetails() {
           </div>
         </div>
 
-        {/* Right side */}
-        <div className="lg:col-span-4 bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
+        {/* Right side - Details Panel */}
+        <div className="lg:col-span-4 bg-white p-3 md:p-6 rounded-lg border border-gray-200 shadow-sm">
           <DetailsPanel
             ticket={ticket}
             onTicketUpdated={() => setRefresh(Math.random())}
@@ -381,13 +377,13 @@ export default function TicketDetails() {
       {/* 🖼️ Image Preview Overlay */}
       {previewImage && (
         <div
-          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center"
+          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
           onClick={() => setPreviewImage(null)}
         >
           <img
             src={previewImage}
             alt="Preview"
-            className="max-w-[90%] max-h-[90%] rounded-lg shadow-lg border border-white cursor-pointer"
+            className="max-w-full max-h-full rounded-lg shadow-lg border border-white"
             onClick={(e) => e.stopPropagation()}
           />
         </div>

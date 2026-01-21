@@ -14,19 +14,34 @@ export default function Header() {
     setToken(localStorage.getItem("jwt_token"));
   }, []);
 
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setOpen(false);
+      }
+    }
+
+    if (open) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () =>
+        document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [open]);
+
   if (pathname === "/") return null;
 
   return (
-    <header className="fixed inset-x-0 top-0 z-50 h-16 bg-white shadow-sm border-b border-gray-200 flex items-center justify-between px-8">
+    <header className="fixed inset-x-0 top-0 z-50 h-16 bg-white shadow-sm border-b border-gray-200 flex items-center justify-between px-3 md:px-6 lg:px-8">
       <div
         onClick={() => {
           if (pathname !== "/create-ticket") router.push("/tickets");
         }}
-        className={`flex items-center gap-3 ${
+        className={`flex items-center gap-2 md:gap-3 ${
           pathname === "/create-ticket" ? "cursor-default" : "cursor-pointer"
         }`}
       >
-        <div className="flex h-8 w-8 items-center justify-center rounded bg-gray-100">
+        <div className="flex h-8 w-8 items-center justify-center rounded bg-gray-100 flex-shrink-0">
           <svg
             className="h-5 w-5 text-gray-700"
             fill="currentColor"
@@ -40,7 +55,7 @@ export default function Header() {
             />
           </svg>
         </div>
-        <h1 className="text-lg font-semibold text-gray-900">
+        <h1 className="text-sm md:text-base lg:text-lg font-semibold text-gray-900 truncate">
           Ticketing System
         </h1>
       </div>
@@ -48,8 +63,9 @@ export default function Header() {
       {token && (
         <div className="relative" ref={dropdownRef}>
           <button
-            className="rounded p-2 hover:bg-gray-100 cursor-pointer"
+            className="rounded p-2 hover:bg-gray-100 cursor-pointer transition-colors"
             onClick={() => setOpen(!open)}
+            aria-label="User menu"
           >
             <svg
               className="h-5 w-5 text-gray-600"
@@ -61,13 +77,13 @@ export default function Header() {
           </button>
 
           {open && (
-            <div className="absolute right-0 mt-2 w-40 bg-white border rounded-md shadow-md z-50">
+            <div className="absolute right-0 mt-2 w-40 bg-white border rounded-md shadow-lg z-50 animate-in fade-in slide-in-from-top-2 duration-200">
               <button
                 onClick={() => {
                   localStorage.clear();
                   router.push("/");
                 }}
-                className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
+                className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 rounded-md transition-colors"
               >
                 Sign out
               </button>

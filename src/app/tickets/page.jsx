@@ -116,8 +116,8 @@ export default function TicketsPage() {
   return (
     <div className="flex flex-col h-full">
       <div className="bg-gray-50 px-6 pt-6 pb-3 flex-shrink-0">
-        <div className="border border-gray-200 rounded-sm bg-white flex items-center h-[52px] px-5 w-full mb-4">
-          <h3 className="font-bold text-[18px]">
+        <div className="border border-gray-200 rounded-sm bg-white flex items-center justify-between min-h-[52px] px-3 md:px-5 w-full mb-4">
+          <h3 className="font-bold text-base md:text-[18px] py-2">
             {selectedItem === "forwarded"
               ? "Forwarded Tickets"
               : selectedItem === "group"
@@ -128,6 +128,15 @@ export default function TicketsPage() {
                     ? "Reports"
                     : "All Recent Tickets"}
           </h3>
+
+          {/* New Ticket Button - Only visible on mobile */}
+          <button
+            onClick={() => router.push("/createTicket")}
+            className="md:hidden bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-sm font-medium flex items-center gap-1"
+          >
+            <Plus className="w-4 h-4" />
+            Create Ticket
+          </button>
         </div>
 
         <Filter onFilterChange={handleFilterChange} />

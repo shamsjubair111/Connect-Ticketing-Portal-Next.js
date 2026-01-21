@@ -563,9 +563,7 @@ export default function DetailsPanel({
               <span className="text-gray-600">Last message:</span>
               {ticket?.comments?.length > 0 ? (
                 <>
-                  <span>
-                    {ticket.comments[ticket.comments.length - 1].message}
-                  </span>
+                  <span>{ticket.comments[0].message}</span>
                   <span className="text-gray-500 text-xs">
                     by{" "}
                     {userType === "agent"

@@ -177,6 +177,7 @@ export default function LoginView() {
         <button
           onClick={handleOnClick}
           disabled={!disable()}
+          style={{cursor: "pointer"}}
           className={`w-full py-2.5 mt-2 rounded-lg font-medium text-white transition-all duration-200
             ${
               disable()
