@@ -7,6 +7,7 @@ import Pagination from "@/components/shared/Pagination";
 import Table from "@/components/shared/Table";
 import { useTicketContext } from "@/context/TicketContext";
 import { ticketColumns } from "@/utils/tableColumns";
+import { Plus } from "lucide-react";
 
 export default function TicketsPage() {
   const [tickets, setTickets] = useState([]);
