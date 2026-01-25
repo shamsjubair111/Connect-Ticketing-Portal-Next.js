@@ -1,7 +1,7 @@
 "use client";
 
 import { Label, TextInput, Tooltip } from "flowbite-react";
-import React, { useContext, useEffect, useState, createRef } from "react";
+import React, { useContext, useEffect, useState, createRef, Suspense } from "react";
 import { generateOtp, login, validateAccessToken } from "@/api/ticketingApis";
 import { alertContext } from "@/hooks/alertContext";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -9,7 +9,7 @@ import { checkPhoneFormat } from "@/common/functions";
 import ReCAPTCHA from "react-google-recaptcha";
 import { AiFillLock } from "react-icons/ai";
 
-export default function LoginView() {
+function LoginView() {
   const [phone_number, setPhone] = useState("");
   const [show, setShow] = useState(false);
   const [token, setToken] = useState("");
@@ -32,7 +32,7 @@ export default function LoginView() {
           localStorage.setItem("jwt_token", jwtToken);
           router.push("/tickets");
         })
-        .catch(() => {});
+        .catch(() => { });
     } else if (localStorage.getItem("jwt_token")) {
       router.push("/tickets");
     }
@@ -159,30 +159,29 @@ export default function LoginView() {
 
         {/* OTP Field */}
         {show && (
-        <div className="w-full mb-4">
-        <Label htmlFor="otp" value="Enter OTP" className="text-gray-700" />
-        <TextInput
-          id="otp"
-          addon={<AiFillLock />}
-          required
-          placeholder="Enter your OTP"
-          value={otp}
-          onChange={(e) => setOtp(e.target.value)}
-          className="mt-1"
-        />
-      </div>
+          <div className="w-full mb-4">
+            <Label htmlFor="otp" value="Enter OTP" className="text-gray-700" />
+            <TextInput
+              id="otp"
+              addon={<AiFillLock />}
+              required
+              placeholder="Enter your OTP"
+              value={otp}
+              onChange={(e) => setOtp(e.target.value)}
+              className="mt-1"
+            />
+          </div>
         )}
 
         {/* Button */}
         <button
           onClick={handleOnClick}
           disabled={!disable()}
-          style={{cursor: "pointer"}}
+          style={{ cursor: "pointer" }}
           className={`w-full py-2.5 mt-2 rounded-lg font-medium text-white transition-all duration-200
-            ${
-              disable()
-                ? "bg-blue-700 hover:bg-blue-800"
-                : "bg-gray-400 cursor-not-allowed"
+            ${disable()
+              ? "bg-blue-700 hover:bg-blue-800"
+              : "bg-gray-400 cursor-not-allowed"
             }`}
         >
           {!show ? "Get OTP" : "Login"}
@@ -194,5 +193,18 @@ export default function LoginView() {
         </p>
       </div>
     </div>
+  );
+}
+
+// Wrap in Suspense to fix useSearchParams() build error
+export default function Page() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
+        <div className="text-gray-600">Loading...</div>
+      </div>
+    }>
+      <LoginView />
+    </Suspense>
   );
 }
