@@ -9,11 +9,10 @@ export const ticketColumns = [
         </div>
         <div>
           <div className="text-sm font-medium text-gray-900">
-            {row?.issuer_user_type === "customer"
-              ? "Customer"
-              : row?.issuer_user_type === "cc"
-              ? "CC"
-              : "Unknown"}
+            {row?.requester_name 
+              ? row.requester_name
+             
+              : "Customer"}
           </div>
           <div className="text-xs text-gray-500">{row?.issuer_number}</div>
         </div>
