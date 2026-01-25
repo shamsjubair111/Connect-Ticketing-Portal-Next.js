@@ -5,15 +5,14 @@ export const ticketColumns = [
     render: (row) => (
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 rounded-full bg-blue-700 flex items-center justify-center text-white text-sm font-semibold">
-          {row?.issuer_user_type?.slice(0, 2).toUpperCase() || "NA"}
+          {row?.requester_name?.slice(0, 2).toUpperCase() || "NA"}
         </div>
         <div>
           <div className="text-sm font-medium text-gray-900">
-            {row?.issuer_user_type === "customer"
-              ? "Customer"
-              : row?.issuer_user_type === "cc"
-              ? "CC"
-              : "Unknown"}
+            {row?.requester_name 
+              ? row?.requester_name
+              : 
+              "Customer"}
           </div>
           <div className="text-xs text-gray-500">{row?.issuer_number}</div>
         </div>

@@ -8,6 +8,7 @@ import Table from "@/components/shared/Table";
 import { useTicketContext } from "@/context/TicketContext";
 import { ticketColumns } from "@/utils/tableColumns";
 import { Plus } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 export default function TicketsPage() {
   const [tickets, setTickets] = useState([]);
@@ -15,7 +16,7 @@ export default function TicketsPage() {
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [filters, setFilters] = useState([]);
-
+  const router = useRouter();
   const { selectedItem, selectedStatus } = useTicketContext();
   const handleFilterChange = (updatedFilters) => setFilters(updatedFilters);
 
