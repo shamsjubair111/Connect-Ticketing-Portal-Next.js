@@ -12,8 +12,11 @@ import {
   addComment,
   getPresignedPost,
   postAttachmentToS3,
+  changeTicketStatus,
 } from "@/api/ticketingApis";
 import { useTicketContext } from "@/context/TicketContext";
+import { alertContext } from "@/hooks/alertContext";
+import { useContext } from "react";
 import "react-quill-new/dist/quill.snow.css";
 
 const ReactQuill = dynamic(() => import("react-quill-new"), { ssr: false });
@@ -31,8 +34,11 @@ export default function TicketDetails() {
   const quillRef = useRef(null);
   const [previewImage, setPreviewImage] = useState(null);
   const [userType, setUserType] = useState("");
+  const [status, setStatus] = useState("Open");
+  const [statusLoading, setStatusLoading] = useState(false);
 
   const { selectedItem } = useTicketContext();
+  const { setAlertCtx } = useContext(alertContext);
 
   // Helper function to check if URL is an image - STRICT checking
   const isImageFile = (url) => {
@@ -159,6 +165,71 @@ export default function TicketDetails() {
     }
     if (id) fetchTicket();
   }, [id, refresh]);
+
+  // Sync status with ticket data
+  useEffect(() => {
+    if (!ticket?.ticket_status) return;
+
+    let apiStatus = ticket.ticket_status;
+    let formatted;
+    if (apiStatus === "closed") {
+      formatted = "Solved";
+    } else {
+      formatted = apiStatus
+        .replace("_", " ")
+        .replace(/\b\w/g, (c) => c.toUpperCase());
+    }
+    setStatus(formatted);
+  }, [ticket?.ticket_status]);
+
+  // Handle status change
+  const handleStatusChange = async (newStatus) => {
+    try {
+      setStatusLoading(true);
+      setStatus(newStatus);
+
+      let apiStatus = newStatus;
+      if (newStatus === "Solved") {
+        apiStatus = "closed";
+      }
+
+      const payload = {
+        ticket_id: id,
+        status: apiStatus.toLowerCase().split(" ").join("_"),
+      };
+
+      await changeTicketStatus(payload);
+      setRefresh(Math.random());
+
+      setAlertCtx({
+        title: "Success!",
+        message: `Status updated to ${newStatus}`,
+        type: "success",
+      });
+    } catch (err) {
+      console.error("Status update failed:", err);
+      // Revert status on error
+      if (ticket?.ticket_status) {
+        let revertStatus = ticket.ticket_status;
+        if (revertStatus === "closed") {
+          setStatus("Solved");
+        } else {
+          setStatus(
+            revertStatus
+              .replace("_", " ")
+              .replace(/\b\w/g, (c) => c.toUpperCase()),
+          );
+        }
+      }
+      setAlertCtx({
+        title: "Error",
+        message: err.response?.data?.message || "Failed to update status",
+        type: "error",
+      });
+    } finally {
+      setStatusLoading(false);
+    }
+  };
 
   // Check if editor is empty
   const isEditorEmpty = (html) => {
@@ -521,6 +592,12 @@ export default function TicketDetails() {
             <p className="break-words">
               <b>Issued By:</b> {ticket.issuer_number}
             </p>
+            <p className="break-words">
+              <b>Problematic Number:</b> {ticket.problematic_number}
+            </p>
+            <p className="break-words">
+              <b>Description:</b> {ticket.description}
+            </p>
           </div>
 
           {/* Attachments (From Ticket Details) */}
@@ -619,19 +696,48 @@ export default function TicketDetails() {
                 )}
               </div>
 
-              {/* Submit button moved to right */}
-              <button
-                onClick={handleSubmit}
-                disabled={isSubmitDisabled}
-                className={`w-full sm:w-auto px-4 md:px-6 py-2 rounded text-white text-sm md:text-base
+              {/* Status dropdown and Submit button */}
+              <div className="flex items-center gap-3 w-full sm:w-auto">
+                {/* Status Dropdown - only visible for certain user types */}
+                {userType !== "agent" &&
+                  userType !== "customer" &&
+                  userType !== "pbx_user" && (
+                    <div className="flex items-center gap-2">
+                      <label className="text-xs md:text-sm text-gray-600 whitespace-nowrap">
+                        Status:
+                      </label>
+                      <select
+                        value={status}
+                        onChange={(e) => handleStatusChange(e.target.value)}
+                        disabled={statusLoading}
+                        className={`rounded border border-gray-300 bg-white px-2 py-1.5 text-xs md:text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                          statusLoading
+                            ? "opacity-50 cursor-not-allowed"
+                            : "cursor-pointer"
+                        }`}
+                      >
+                        <option value="Open">Open</option>
+                        <option value="In Progress">In Progress</option>
+                        <option value="Solved">Solved</option>
+                      </select>
+                    </div>
+                  )}
+
+                {/* Submit button */}
+                <button
+                  onClick={handleSubmit}
+                  disabled={isSubmitDisabled}
+                  className={`w-full sm:w-auto px-4 md:px-6 py-2 rounded text-white text-sm md:text-base
     ${
       isSubmitDisabled
         ? "bg-gray-400 cursor-not-allowed"
         : "bg-black hover:bg-gray-900"
     }`}
-              >
-                Submit
-              </button>
+                  style={{ cursor: "pointer" }}
+                >
+                  Submit
+                </button>
+              </div>
             </div>
           </div>
         </div>

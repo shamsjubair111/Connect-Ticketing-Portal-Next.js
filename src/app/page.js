@@ -121,7 +121,7 @@ function LoginView() {
           ref={recaptchaRef}
           size="invisible"
           badge="bottomright"
-          sitekey="6LezOigmAAAAAMsKcNE0mcdAlgBxEZDA3n_s1BkZ"
+          sitekey="6LcaZ1YsAAAAADpkzqa5SsWZZlhSaY7HqZi1iaXQ"
         />
       </div>
 
@@ -139,53 +139,58 @@ function LoginView() {
           Brilliant Connect Ticketing
         </h2>
 
-        {/* Phone Field */}
-        <div className="w-full mb-4">
-          <Label htmlFor="phoneNo" value="Brilliant Number" className="text-gray-700" />
-          <TextInput
-            id="phoneNo"
-            type="text"
-            required
-            addon="+88"
-            placeholder="e.g: 09638XXXXXX"
-            value={phone_number}
-            onChange={(e) => {
-              setPhone(e.target.value);
-              setShow(false);
-            }}
-            className="mt-1"
-          />
-        </div>
+     <form
+  className="w-full flex flex-col"
+  onSubmit={(e) => {
+    e.preventDefault(); // prevent page reload
+    handleOnClick();    // trigger OTP or login logic
+  }}
+>
+  {/* Phone Field */}
+  <div className="w-full mb-4">
+    <Label htmlFor="phoneNo" value="Brilliant Number" className="text-gray-700" />
+    <TextInput
+      id="phoneNo"
+      type="text"
+      required
+      addon="+88"
+      placeholder="e.g: 09638XXXXXX"
+      value={phone_number}
+      onChange={(e) => {
+        setPhone(e.target.value);
+        setShow(false);
+      }}
+      className="mt-1"
+    />
+  </div>
 
-        {/* OTP Field */}
-        {show && (
-          <div className="w-full mb-4">
-            <Label htmlFor="otp" value="Enter OTP" className="text-gray-700" />
-            <TextInput
-              id="otp"
-              addon={<AiFillLock />}
-              required
-              placeholder="Enter your OTP"
-              value={otp}
-              onChange={(e) => setOtp(e.target.value)}
-              className="mt-1"
-            />
-          </div>
-        )}
+  {/* OTP Field */}
+  {show && (
+    <div className="w-full mb-4">
+      <Label htmlFor="otp" value="Enter OTP" className="text-gray-700" />
+      <TextInput
+        id="otp"
+        addon={<AiFillLock />}
+        required
+        placeholder="Enter your OTP"
+        value={otp}
+        onChange={(e) => setOtp(e.target.value)}
+        className="mt-1"
+      />
+    </div>
+  )}
 
-        {/* Button */}
-        <button
-          onClick={handleOnClick}
-          disabled={!disable()}
-          style={{ cursor: "pointer" }}
-          className={`w-full py-2.5 mt-2 rounded-lg font-medium text-white transition-all duration-200
-            ${disable()
-              ? "bg-blue-700 hover:bg-blue-800"
-              : "bg-gray-400 cursor-not-allowed"
-            }`}
-        >
-          {!show ? "Get OTP" : "Login"}
-        </button>
+  {/* Button */}
+  <button
+    type="submit" // <-- important change here
+    disabled={!disable()}
+    className={`w-full py-2.5 mt-2 rounded-lg font-medium text-white transition-all duration-200
+      ${disable() ? "bg-blue-700 hover:bg-blue-800" : "bg-gray-400 cursor-not-allowed"}`}
+  >
+    {!show ? "Get OTP" : "Login"}
+  </button>
+</form>
+
 
         {/* Footer */}
         <p className="text-xs text-gray-500 mt-8 text-center">

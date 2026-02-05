@@ -585,7 +585,7 @@ export default function DetailsPanel({
               )}
             </div>
 
-            {userType !== "customer" &&
+            {/* {userType !== "customer" &&
               userType !== "pbx_user" &&
               userType !== "agent" && (
                 <div>
@@ -600,7 +600,7 @@ export default function DetailsPanel({
                     <option>Solved</option>
                   </select>
                 </div>
-              )}
+              )} */}
 
             {userType !== "customer" &&
               userType !== "pbx_user" &&

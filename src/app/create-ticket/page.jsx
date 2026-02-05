@@ -45,7 +45,7 @@ export default function CreateCustomerTicketPage() {
       .catch((err) =>
         setErrorText(
           err?.response?.data?.message ||
-          "Sorry, something went wrong. Please refresh.",
+            "Sorry, something went wrong. Please refresh.",
         ),
       );
   }, []);
@@ -59,7 +59,7 @@ export default function CreateCustomerTicketPage() {
       .catch((err) =>
         setErrorText(
           err?.response?.data?.message ||
-          "Failed to load subgroups. Please try again.",
+            "Failed to load subgroups. Please try again.",
         ),
       );
   };
@@ -133,7 +133,7 @@ export default function CreateCustomerTicketPage() {
         setButtonLoader(false);
         setErrorText(
           err?.response?.data?.message ||
-          "Sorry, something went wrong. Please try again.",
+            "Sorry, something went wrong. Please try again.",
         );
       });
   };
@@ -306,10 +306,11 @@ export default function CreateCustomerTicketPage() {
               <Button
                 onClick={handleSubmit}
                 disabled={isDisabled || buttonLoader}
-                className={`w-full py-3 text-base font-semibold rounded-lg transition ${isDisabled
+                className={`w-full py-3 text-base font-semibold rounded-lg transition ${
+                  isDisabled
                     ? "bg-blue-300 cursor-not-allowed"
                     : "bg-blue-600 hover:bg-blue-700 text-white"
-                  }`}
+                }`}
               >
                 {buttonLoader ? "Processing..." : "Submit Ticket"}
               </Button>
@@ -335,7 +336,7 @@ export default function CreateCustomerTicketPage() {
           ref={recaptchaRef}
           size="invisible"
           badge="inline"
-          sitekey="6LezOigmAAAAAMsKcNE0mcdAlgBxEZDA3n_s1BkZ"
+          sitekey="6LcaZ1YsAAAAADpkzqa5SsWZZlhSaY7HqZi1iaXQ"
         />
       </div>
     </div>

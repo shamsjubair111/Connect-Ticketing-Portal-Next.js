@@ -14,7 +14,7 @@ export const ticketColumns = [
               : 
               "Customer"}
           </div>
-          <div className="text-xs text-gray-500">{row?.issuer_number}</div>
+          <div className="text-xs text-gray-500">{row?.problematic_number}</div>
         </div>
       </div>
     ),
