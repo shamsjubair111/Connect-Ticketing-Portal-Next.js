@@ -1,19 +1,38 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ChevronDown, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import MyModal from "@/common/MyModal";
 import { useContext } from "react";
 import { alertContext } from "@/hooks/alertContext";
 import { moveTicketToTrash } from "@/api/ticketingApis";
+import { jwtDecode } from "jwt-decode";
 
 const Table = ({ data, loading, columns, reload, page }) => {
   const [selectedRows, setSelectedRows] = useState(new Set());
   const [showTrashModal, setShowTrashModal] = useState(false);
   const [trashTicketId, setTrashTicketId] = useState(null);
+  const [userType, setUserType] = useState("");
   const router = useRouter();
   const { setAlertCtx } = useContext(alertContext);
+
+  // Get user type from JWT
+  useEffect(() => {
+    try {
+      const token = localStorage.getItem("jwt_token");
+      if (token) {
+        const decoded = jwtDecode(token);
+        setUserType(decoded?.user_type || "");
+      }
+    } catch (err) {
+      console.error("Error decoding token:", err);
+    }
+  }, []);
+
+  // Check if user can see action column
+  const canSeeActions =
+    userType !== "agent" && userType !== "customer" && userType !== "pbx_user";
 
   const toggleRow = (id) => {
     const next = new Set(selectedRows);
@@ -100,9 +119,12 @@ const Table = ({ data, loading, columns, reload, page }) => {
                 </th>
               ))}
 
-              <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">
-                ACTION
-              </th>
+              {/* Only show ACTION column if user has permission */}
+              {canSeeActions && (
+                <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">
+                  ACTION
+                </th>
+              )}
             </tr>
           </thead>
 
@@ -129,18 +151,21 @@ const Table = ({ data, loading, columns, reload, page }) => {
                   </td>
                 ))}
 
-                <td className="px-4 py-3">
-                  <button
-                    className="p-1 hover:bg-gray-200 rounded cursor-pointer"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setTrashTicketId(row.ticket_id);
-                      setShowTrashModal(true);
-                    }}
-                  >
-                    <Trash2 className="w-5 h-5 text-red-600 hover:text-red-800" />
-                  </button>
-                </td>
+                {/* Only show ACTION cell if user has permission */}
+                {canSeeActions && (
+                  <td className="px-4 py-3">
+                    <button
+                      className="p-1 hover:bg-gray-200 rounded cursor-pointer"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setTrashTicketId(row.ticket_id);
+                        setShowTrashModal(true);
+                      }}
+                    >
+                      <Trash2 className="w-5 h-5 text-red-600 hover:text-red-800" />
+                    </button>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>

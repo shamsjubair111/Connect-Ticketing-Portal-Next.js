@@ -53,6 +53,7 @@ export default function PermanentlyDeletedTicketsPage() {
           totalItems={totalTickets}
           itemsPerPage={10}
           onPageChange={setPage}
+          label={"tickets"}
         />
       </div>
 

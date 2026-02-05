@@ -90,6 +90,7 @@ export default function ForwardedTicketsPage() {
           totalItems={totalTickets}
           itemsPerPage={10}
           onPageChange={setPage}
+          label={"tickets"}
         />
       </div>
 

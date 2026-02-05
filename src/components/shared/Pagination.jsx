@@ -6,6 +6,7 @@ export default function Pagination({
   totalItems = 10000,
   itemsPerPage = 20,
   onPageChange,
+  label,
 }) {
   const [currentPage, setCurrentPage] = useState(1);
   const totalPages = Math.ceil(totalItems / itemsPerPage);
@@ -56,7 +57,7 @@ export default function Pagination({
   return (
     <div className="flex items-center justify-between border border-gray-200 px-2 rounded-sm">
       <span className="text-sm text-gray-600">
-        {totalItems.toLocaleString()}+ tickets
+        {totalItems.toLocaleString()}+ {label}
       </span>
 
       <div className="flex items-center gap-2">

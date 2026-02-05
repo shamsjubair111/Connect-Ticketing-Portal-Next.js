@@ -77,6 +77,7 @@ export default function GroupInfoPage() {
               totalItems={totalGroups}
               itemsPerPage={ITEMS_PER_PAGE}
               onPageChange={setPage}
+              label={"groups"}
             />
           </div>
         )}

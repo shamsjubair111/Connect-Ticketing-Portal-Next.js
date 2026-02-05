@@ -2,7 +2,7 @@
 
 import { useParams, useRouter } from "next/navigation";
 import DetailsPanel from "@/components/DetailsPanel";
-import { ChevronLeft, Edit2 } from "lucide-react";
+import { ChevronLeft, Edit2, FileText, Download } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useRef, useState } from "react";
 import TurndownService from "turndown";
@@ -33,6 +33,101 @@ export default function TicketDetails() {
   const [userType, setUserType] = useState("");
 
   const { selectedItem } = useTicketContext();
+
+  // Helper function to check if URL is an image - STRICT checking
+  const isImageFile = (url) => {
+    if (!url) return false;
+    const imageExtensions = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp"];
+    const urlLower = url.toLowerCase();
+    const urlWithoutQuery = urlLower.split("?")[0];
+    return imageExtensions.some((ext) => urlWithoutQuery.endsWith(ext));
+  };
+
+  // Helper function to get file extension
+  const getFileExtension = (url) => {
+    try {
+      const urlWithoutParams = url.split("?")[0];
+      const parts = urlWithoutParams.split(".");
+      return parts.length > 1 ? parts[parts.length - 1].toLowerCase() : "";
+    } catch {
+      return "";
+    }
+  };
+
+  // Helper function to get file name from URL
+  const getFileName = (url) => {
+    try {
+      const urlWithoutParams = url.split("?")[0];
+      const parts = urlWithoutParams.split("/");
+      let fileName = decodeURIComponent(parts[parts.length - 1]);
+
+      if (fileName.length > 40) {
+        const ext = getFileExtension(url);
+        const nameWithoutExt = fileName.substring(0, fileName.lastIndexOf("."));
+        fileName =
+          nameWithoutExt.substring(0, 30) + "..." + (ext ? `.${ext}` : "");
+      }
+
+      return fileName;
+    } catch {
+      return "Download File";
+    }
+  };
+
+  // Helper function to get file icon based on extension
+  const getFileIcon = (url) => {
+    const ext = getFileExtension(url);
+
+    switch (ext) {
+      case "pdf":
+        return "📄";
+      case "doc":
+      case "docx":
+        return "📝";
+      case "xls":
+      case "xlsx":
+      case "csv":
+        return "📊";
+      case "zip":
+      case "rar":
+      case "7z":
+        return "🗜️";
+      case "txt":
+        return "📃";
+      case "ppt":
+      case "pptx":
+        return "📽️";
+      case "mp4":
+      case "avi":
+      case "mov":
+        return "🎥";
+      case "mp3":
+      case "wav":
+        return "🎵";
+      case "js":
+      case "jsx":
+      case "ts":
+      case "tsx":
+        return "💻";
+      case "json":
+      case "xml":
+        return "📋";
+      case "svg":
+        return "🎨";
+      case "crt":
+      case "key":
+      case "pem":
+        return "🔐";
+      default:
+        return "📎";
+    }
+  };
+
+  // Get file type label
+  const getFileTypeLabel = (url) => {
+    const ext = getFileExtension(url);
+    return ext ? ext.toUpperCase() : "FILE";
+  };
 
   // Get user type from JWT
   useEffect(() => {
@@ -77,21 +172,41 @@ export default function TicketDetails() {
     return clean.length === 0;
   };
 
-  // 🧩 Submit comment
+  // 🧩 Submit comment - FIXED to avoid duplicate attachments
   const handleSubmit = async () => {
     try {
-      const latestAttachments = [...attachments];
+      // Don't strip images from the message - keep them embedded
+      const htmlMessage = message;
+
+      // Extract image URLs from the HTML
+      const imageRegex = /<img[^>]+src="([^">]+)"/g;
+      const embeddedImages = [];
+      let match;
+      while ((match = imageRegex.exec(htmlMessage)) !== null) {
+        embeddedImages.push(match[1]);
+      }
+
+      // Get non-image attachments (files) - these are NOT embedded in the message
+      const nonImageAttachments = attachments.filter(
+        (url) => !isImageFile(url),
+      );
 
       const turndownService = new TurndownService();
-      const cleanedMessage = message.replace(/<img[^>]*>/g, "");
-      const markdownMessage = turndownService.turndown(cleanedMessage).trim();
+      const markdownMessage = turndownService.turndown(htmlMessage).trim();
+
+      // Combine all unique attachments using Set to avoid duplicates
+      const allAttachments = [
+        ...new Set([...embeddedImages, ...nonImageAttachments]),
+      ];
 
       const payload = {
         ticket_id: id,
         is_internal: userType === "agent" ? false : isPrivate,
         message: markdownMessage,
-        attachments: latestAttachments,
+        attachments: allAttachments,
       };
+
+      console.log("Submitting payload:", payload); // Debug log
 
       await addComment(payload);
 
@@ -107,7 +222,7 @@ export default function TicketDetails() {
   const isSubmitDisabled =
     (attachments.length > 0 && isEditorEmpty(message)) || loading;
 
-  // 🖼️ Upload image to S3 using API functions
+  // 🖼️ Upload file to S3 using API functions
   const uploadToS3 = async (file) => {
     try {
       const presignRes = await getPresignedPost({ object_name: file.name });
@@ -124,13 +239,13 @@ export default function TicketDetails() {
 
       return publicUrl;
     } catch (err) {
-      console.error("❌ Error uploading image:", err);
-      alert("Image upload failed.");
+      console.error("❌ Error uploading file:", err);
+      alert("File upload failed.");
       return null;
     }
   };
 
-  // 🖼️ Custom image handler for multiple files
+  // 🖼️ Custom image handler for multiple files (images only)
   const imageHandler = () => {
     const input = document.createElement("input");
     input.type = "file";
@@ -151,10 +266,30 @@ export default function TicketDetails() {
         quill.insertText(range.index + 1, "\n");
         quill.setSelection(range.index + 2);
 
-        setAttachments((prev) => {
-          const updated = [...prev, publicUrl];
-          return updated;
-        });
+        // Add to attachments for tracking
+        setAttachments((prev) => [...prev, publicUrl]);
+      }
+    };
+
+    input.click();
+  };
+
+  // 📎 Custom file handler for non-image files
+  const fileHandler = () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "*/*";
+    input.multiple = true;
+
+    input.onchange = async () => {
+      const files = Array.from(input.files);
+      if (files.length === 0) return;
+
+      for (const file of files) {
+        const publicUrl = await uploadToS3(file);
+        if (!publicUrl) continue;
+
+        setAttachments((prev) => [...prev, publicUrl]);
       }
     };
 
@@ -174,6 +309,163 @@ export default function TicketDetails() {
     }),
     [],
   );
+
+  // Render message with embedded images
+  const MessageRenderer = ({ message, attachments }) => {
+    if (!message) return null;
+
+    // Check if message contains markdown image syntax
+    const markdownImageRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
+    const hasMarkdownImages = markdownImageRegex.test(message);
+
+    if (!hasMarkdownImages) {
+      // Simple text message - render normally with attachments below
+      return (
+        <>
+          <p className="text-sm md:text-base text-gray-700 whitespace-pre-line break-words mb-3">
+            {message}
+          </p>
+          {attachments?.length > 0 && (
+            <div className="mt-3">
+              <AttachmentRenderer attachments={attachments} />
+            </div>
+          )}
+        </>
+      );
+    }
+
+    // Message has embedded images - parse and render inline
+    const parts = [];
+    let lastIndex = 0;
+    markdownImageRegex.lastIndex = 0; // Reset regex
+
+    message.replace(markdownImageRegex, (match, alt, url, offset) => {
+      // Add text before image
+      if (offset > lastIndex) {
+        parts.push({
+          type: "text",
+          content: message.slice(lastIndex, offset),
+        });
+      }
+
+      // Add image
+      parts.push({
+        type: "image",
+        url: url,
+        alt: alt,
+      });
+
+      lastIndex = offset + match.length;
+      return match;
+    });
+
+    // Add remaining text
+    if (lastIndex < message.length) {
+      parts.push({
+        type: "text",
+        content: message.slice(lastIndex),
+      });
+    }
+
+    // Get non-image attachments for rendering at the end
+    const nonImageAttachments =
+      attachments?.filter((url) => !isImageFile(url)) || [];
+
+    return (
+      <>
+        <div className="text-sm md:text-base text-gray-700 break-words mb-3">
+          {parts.map((part, index) => {
+            if (part.type === "text") {
+              return (
+                <span key={index} className="whitespace-pre-line">
+                  {part.content}
+                </span>
+              );
+            } else {
+              return (
+                <img
+                  key={index}
+                  src={part.url}
+                  alt={part.alt}
+                  onClick={() =>
+                    setPreviewImage(previewImage === part.url ? null : part.url)
+                  }
+                  className="max-w-full h-auto my-2 rounded border cursor-pointer hover:opacity-80"
+                />
+              );
+            }
+          })}
+        </div>
+        {nonImageAttachments.length > 0 && (
+          <div className="mt-3">
+            <AttachmentRenderer attachments={nonImageAttachments} />
+          </div>
+        )}
+      </>
+    );
+  };
+
+  // Component to render attachments (images and files)
+  const AttachmentRenderer = ({ attachments }) => {
+    if (!attachments || attachments.length === 0) return null;
+
+    const images = attachments.filter(isImageFile);
+    const files = attachments.filter((url) => !isImageFile(url));
+
+    return (
+      <div className="space-y-4">
+        {/* Render Images */}
+        {images.length > 0 && (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:flex md:flex-wrap gap-2 md:gap-4">
+            {images.map((url, index) => (
+              <img
+                key={`img-${index}`}
+                src={url}
+                alt={`attachment-${index}`}
+                onClick={() =>
+                  setPreviewImage(previewImage === url ? null : url)
+                }
+                className={`w-full md:w-40 h-32 md:h-40 object-cover rounded border cursor-pointer transition 
+                  ${
+                    previewImage === url
+                      ? "scale-105 ring-4 ring-blue-400"
+                      : "hover:opacity-80"
+                  }`}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Render Non-Image Files */}
+        {files.length > 0 && (
+          <div className="space-y-2">
+            {files.map((url, index) => (
+              <a
+                key={`file-${index}`}
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 p-3 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 transition group cursor-pointer"
+              >
+                <div className="flex-shrink-0 flex items-center justify-center w-10 h-10 rounded bg-blue-50 group-hover:bg-blue-100">
+                  <span className="text-xl">{getFileIcon(url)}</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900 truncate group-hover:text-blue-600">
+                    {getFileName(url)}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {getFileTypeLabel(url)} • Click to open in new tab
+                  </p>
+                </div>
+                <Download className="w-5 h-5 text-gray-400 group-hover:text-blue-600 flex-shrink-0" />
+              </a>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   // 🌀 UI states
   if (loading)
@@ -237,25 +529,7 @@ export default function TicketDetails() {
               <h3 className="text-base md:text-lg font-semibold mb-3">
                 Attachments
               </h3>
-
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:flex md:flex-wrap gap-2 md:gap-4">
-                {ticket.attachments.map((url, index) => (
-                  <img
-                    key={index}
-                    src={url}
-                    alt={`attachment-${index}`}
-                    onClick={() =>
-                      setPreviewImage(previewImage === url ? null : url)
-                    }
-                    className={`w-full md:w-40 h-32 md:h-40 object-cover rounded border cursor-pointer transition 
-            ${
-              previewImage === url
-                ? "scale-105 ring-4 ring-blue-400"
-                : "hover:opacity-80"
-            }`}
-                  />
-                ))}
-              </div>
+              <AttachmentRenderer attachments={ticket.attachments} />
             </div>
           )}
 
@@ -289,29 +563,10 @@ export default function TicketDetails() {
                     </span>
                   </div>
 
-                  <p className="text-sm md:text-base text-gray-700 whitespace-pre-line break-words">
-                    {comment.message || ""}
-                  </p>
-
-                  {comment.attachments?.length > 0 && (
-                    <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 md:flex md:flex-wrap gap-2 md:gap-3">
-                      {comment.attachments.map((url, index) => (
-                        <img
-                          key={index}
-                          src={url}
-                          alt={`attachment-${index}`}
-                          onClick={() =>
-                            setPreviewImage(previewImage === url ? null : url)
-                          }
-                          className={`w-full md:w-40 h-32 md:h-40 object-cover rounded border cursor-pointer transition ${
-                            previewImage === url
-                              ? "scale-105 ring-4 ring-blue-400"
-                              : "hover:opacity-80"
-                          }`}
-                        />
-                      ))}
-                    </div>
-                  )}
+                  <MessageRenderer
+                    message={comment.message}
+                    attachments={comment.attachments}
+                  />
                 </div>
               ))
             ) : (
@@ -334,21 +589,37 @@ export default function TicketDetails() {
               />
             </div>
 
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mt-4">
-              {userType !== "agent" && userType !== "customer" && (
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={isPrivate}
-                    onChange={(e) => setIsPrivate(e.target.checked)}
-                    className="w-4 h-4"
-                  />
-                  <span className="text-xs md:text-sm text-gray-700">
-                    {isPrivate ? "Internal Comment" : "External Comment"}
-                  </span>
-                </label>
-              )}
+            {/* Show attached non-image files preview */}
+            {attachments.filter((url) => !isImageFile(url)).length > 0 && (
+              <div className="mb-4 space-y-2">
+                <p className="text-xs text-gray-600 font-medium">
+                  Attached files (
+                  {attachments.filter((url) => !isImageFile(url)).length}):
+                </p>
+                <AttachmentRenderer
+                  attachments={attachments.filter((url) => !isImageFile(url))}
+                />
+              </div>
+            )}
 
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                {userType !== "agent" && userType !== "customer" && (
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={isPrivate}
+                      onChange={(e) => setIsPrivate(e.target.checked)}
+                      className="w-4 h-4"
+                    />
+                    <span className="text-xs md:text-sm text-gray-700">
+                      {isPrivate ? "Internal Comment" : "External Comment"}
+                    </span>
+                  </label>
+                )}
+              </div>
+
+              {/* Submit button moved to right */}
               <button
                 onClick={handleSubmit}
                 disabled={isSubmitDisabled}

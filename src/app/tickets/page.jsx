@@ -146,6 +146,7 @@ export default function TicketsPage() {
           totalItems={totalTickets}
           itemsPerPage={10}
           onPageChange={setPage}
+          label={"tickets"}
         />
       </div>
 

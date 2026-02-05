@@ -76,6 +76,7 @@ export default function UserInfoPage() {
             totalItems={totalUsers}
             itemsPerPage={ITEMS_PER_PAGE}
             onPageChange={setPage}
+            label={"users"}
           />
         </div>
         {/* )} */}

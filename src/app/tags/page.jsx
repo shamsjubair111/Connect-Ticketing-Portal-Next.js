@@ -68,6 +68,7 @@ export default function TagsPage() {
             totalItems={totalTags}
             itemsPerPage={ITEMS_PER_PAGE}
             onPageChange={setPage}
+            label={"tags"}
           />
         </div>
       </div>

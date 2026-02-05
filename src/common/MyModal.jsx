@@ -32,11 +32,13 @@ export default function MyModal({
         <div className="flex justify-end gap-3 border-t border-gray-200 px-5 py-3">
           <button
             onClick={closeMethod}
+            style={{ cursor: "pointer" }}
             className="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 rounded hover:bg-gray-200"
           >
             Cancel
           </button>
           <button
+            style={{ cursor: "pointer" }}
             onClick={submitMethod}
             className="px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded hover:bg-blue-700"
           >
